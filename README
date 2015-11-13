@@ -1,0 +1,6 @@
+# Requirements (in order):
+
+MAGI installed and running.
+
+sudo apt-get -y install python-flask python-pymongo
+

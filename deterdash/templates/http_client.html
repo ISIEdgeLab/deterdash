@@ -1,0 +1,209 @@
+{% extends "dashboard.html" %}
+
+{% block metric_title %}
+<h1 class="page-header"><i class="fa fa-bar-chart-o fa-fw"></i>  HTTP Client</h1>
+{% endblock %}
+
+{% block http_client %}
+<div class="col-lg-12">
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <span id="http_client_chart_title">
+                <b> Download Speed </b>
+            </span>
+            <div class="pull-right">
+                <span>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown">
+                            Chart Units
+                            <span class="caret"></span>
+                        </button>
+                        <ul class="dropdown-menu pull-right" role="menu">
+                            <li><a href="#" id="http_client_units_time">Retrieval Time</a></li>
+                            <li><a href="#" id="http_client_units_size">Download Size</a></li>
+                            <li><a href="#" id="http_client_units_speed">Download Speed</a></li>
+                            <li><a href="#" id="http_client_units_sawtooth">Sawtooth (GUI Testing)</a></li>
+                        </ul>
+                    </div>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown">
+                            Time Slice
+                            <span class="caret"></span>
+                        </button>
+                        <ul class="dropdown-menu pull-right" role="menu">
+                            <li><a href="#">3 Minutes</a></li>
+                            <li><a href="#">10 Minutes</a></li>
+                            <li><a href="#">30 Minutes</a></li>
+                            <li><a href="#">1 Hour</a></li>
+                            <li><a href="#">2 Hours</a></li>
+                        </ul>
+                    </div>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown">
+                            Height
+                            <span class="caret"></span>
+                        </button>
+                        <ul class="dropdown-menu pull-right" role="menu">
+                            <li><a href="#" class="horizon_chart_more_height">More</li>
+                            <li><a href="#" class="horizon_chart_less_height">Less</a></li>
+                        </ul>
+                    </div>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown">
+                            Sort By
+                            <span class="caret"></span>
+                        </button>
+                        <ul class="dropdown-menu pull-right" role="menu">
+                            <li><a href="#" class="horizon_chart_sort_name_ascend">Node Name Ascending</a> </li>
+                            <li><a href="#" class="horizon_chart_sort_name_descend">Node Name Descending</a> </li>
+                        </ul>
+                    </div>
+                </span>
+            </div>
+        </div>
+        <!-- /.panel-heading -->
+        <!-- /.panel-body -->
+        <div class="panel-body">
+            <link type="text/css" rel="stylesheet" href="{{ url_for('static', filename='css/http_client.css') }}"></link>
+            <div class="panel-body" id='http_client'>
+                <script type="text/javascript">
+                
+                $(document).ready(reset_horizons());
+
+                var context = cubism.context();
+                var nodes = [];
+                var chart_units = 'speed';
+                var horz_height = 60;
+
+                function reset_horizons() {
+                    console.log('reset_horizons called');
+                    context = cubism.context()
+                                    .step(1000)         // one second per value
+                                    .size($("#http_client").width()-30); // bs gives 30px padding.
+
+                    d3.json(window.location.origin + '/api/nodes', function(error, json) {
+                        if (error) return console.log('nodes error', error);
+                        console.log('got nodes msg', json);
+                        nodes = json['nodes'];
+                        nodes.sort();
+                        update_horizons();
+                    });
+            
+                }
+
+                function update_horizons() {
+                    console.log('update_horizons called');
+                    context = cubism.context()
+                                    .step(1000)         // one second per value
+                                    .size($("#http_client").width()-30); // bs gives 30px padding.
+
+                    d3.select("#http_client").selectAll(".axis")
+                        .data(["top", "bottom"])
+                      .enter().append("div")
+                        .attr("class", function(d) { return d + " axis"; })
+                        .each(function(d) { d3.select(this).call(context.axis().orient(d).ticks(6)); });
+                    
+                    d3.select("#http_client").append("div")
+                        .attr("class", "rule")
+                        .call(context.rule());
+
+                    d3.select("#http_client").selectAll(".horizon")
+                        .data(nodes.map(get_data))
+                      .enter().insert("div", ".bottom")
+                        .attr("class", "horizon")
+                        .call(context.horizon()
+                           .height(horz_height))
+                }
+
+                $('#http_client_units_time').click(function(event) {
+                    chart_units = 'time';
+                    $("#http_client_chart_title").html("<b> Retrieval Time </b>");
+                    d3.select("#http_client").selectAll("*").remove();
+                    reset_horizons();
+                });
+            
+                $('#http_client_units_size').click(function(event) {
+                    chart_units = 'size';
+                    $("#http_client_chart_title").html("<b> Retrieval Size </b>");
+                    d3.select("#http_client").selectAll("*").remove();
+                    reset_horizons();
+                });
+
+                $('#http_client_units_speed').click(function(event) {
+                    chart_units = 'size';
+                    $("#http_client_chart_title").html("<b> Download Speed </b>");
+                    d3.select("#http_client").selectAll("*").remove();
+                    reset_horizons();
+                });
+
+                $('#http_client_units_sawtooth').click(function(event) {
+                    console.log('user chose sawtooth units');
+                    chart_units = 'sawtooth';
+                    $("#http_client_chart_title").html("<b> Sawtooth (GUI Testing Data) </b>");
+                    d3.select("#http_client").selectAll("*").remove();
+                    reset_horizons();
+                });
+
+                $('.horizon_chart_sort_name_ascend').click(function(event) {
+                    nodes.sort();
+                    d3.select("#http_client").selectAll(".horizon").remove();
+                    update_horizons();
+                });
+
+                $('.horizon_chart_sort_name_descend').click(function(event) {
+                    nodes.sort();
+                    nodes.reverse();
+                    d3.select("#http_client").selectAll(".horizon").remove();
+                    update_horizons();
+                });
+
+                $('.horizon_chart_more_height').click(function(event) {
+                    horz_height += (horz_height/2);
+                    d3.select("#http_client").selectAll(".horizon").remove();
+                    update_horizons();
+                });
+
+                $('.horizon_chart_less_height').click(function(event) {
+                    if (horz_height > 15) {
+                        horz_height -= (horz_height/2);
+                        d3.select("#http_client").selectAll(".horizon").remove();
+                        update_horizons();
+                    }
+                });
+
+                function get_data(node) {
+                    return context.metric(function(start, stop, step, callback) {
+                        start = +start, stop = +stop;
+                        url = window.location.origin + '/api/http_client/json?';
+                        url += 'start=' + (start / 1000);
+                        url += '&stop=' + (stop / 1000);
+                        url += '&step=' + (step / 1000);
+                        url += '&node=' + node;
+                        url += "&metric=" + chart_units; 
+                        d3.json(url, function(error, json) {
+                            // console.log('get_data', json);
+                            if (error) { 
+                                console.log('error', error);
+                                callback(error, []);
+                            }
+                            else if (! 'counts' in json) {
+                                callback('bad json data: ' + json, []);
+                            }
+                            else {
+                                callback(null, json['counts']);
+                            }
+                        });
+                    }, node);
+                }
+                </script>
+            </div>
+        </div>
+        <div class="panel-footer">
+            <a href='http://square.github.io/cubism/'> So what's all this then? </a>
+        </div>
+        <!-- /.panel-body -->
+    </div>
+</div>
+<!-- /.col-lg-4 -->
+{% endblock %}
+
