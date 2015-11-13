@@ -1,0 +1,91 @@
+{% extends "dashboard.html" %}
+
+{% block metric_title %}
+<h1 class="page-header"><i class="fa fa-bar-chart-o fa-fw"></i>  HTTP Client</h1>
+{% endblock %}
+
+{% block http_client %}
+<div class="col-lg-12">
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            Cosine!
+        </div>
+        <!-- /.panel-heading -->
+        <div class="panel-body">
+            {####### PANEL BODY START ######################}
+            <div class="http_client_wrapper">
+            <style>
+                @import url({{ url_for('static', filename='css/http_client.css') }})
+            </style>
+            <div class="http_client"></div>
+            <script text="text/javascript" src="{{ url_for('static', filename='js/d3.min.js') }}"></script>
+            <script text="text/javascript" src="{{ url_for('static', filename='js/cubism.v1.js') }}"></script>
+            <script type="text/javascript" src="{{ url_for('static', filename='js/jquery-1.4.2.min.js') }}"></script>
+            <script type="text/javascript">
+                var base_url = window.location.origin;
+                console.log('base url', base_url);
+                var context = cubism.context()
+                    .step(1000)         // one second per value
+                    .size(1000)
+            
+                var nodes = [];
+            
+                d3.json(base_url + '/api/nodes', function(error, json) {
+                    if (error) return console.log('nodes error', error);
+                    console.log('got nodes msg', json);
+                    nodes = json['nodes'];
+                    update_horizons();
+                });
+            
+                d3.select(".http_client").selectAll(".axis")
+                    .data(["top", "bottom"])
+                  .enter().append("div")
+                    .attr("class", function(d) { return d + " axis"; })
+                    .each(function(d) { d3.select(this).call(context.axis().ticks(4).orient(d)); });
+                
+                d3.select(".http_client").append("div")
+                    .attr("class", "rule")
+                    .call(context.rule());
+               
+                function update_horizons() {
+                    d3.select(".http_client").selectAll(".horizon")
+                        .data(nodes.map(get_data))
+                      .enter().insert("div", ".bottom")
+                        .attr("class", "horizon")
+                        .call(context.horizon()
+                           .height(60))
+                }
+            
+                context.on("focus", function(i) {
+                  d3.selectAll(".value").style("right", i == null ? null : context.size() - i + "px");
+                });
+            
+                function get_data(node) {
+                    return context.metric(function(start, stop, step, callback) {
+                        start = +start, stop = +stop;
+                        url = base_url + '/api/http_client/json?';
+                        url += 'start=' + (start / 1000);
+                        url += '&stop=' + (stop / 1000);
+                        url += '&step=' + step;
+                        url += '&node=' + node;
+                        d3.json(url, function(error, json) {
+                            console.log('get_data', json);
+                            if (error) { 
+                                return console.log('error', error);
+                            }
+                            if ('counts' in json) {
+                                callback(null, json['counts']);
+                            }
+                        });
+                    }, node);
+                }
+            </script>
+            </div>
+        {####### PANEL BODY END ######################}
+        </div>
+        <!-- /.panel-body -->
+    </div>
+</div>
+<!-- /.col-lg-4 -->
+{% endblock %}
+

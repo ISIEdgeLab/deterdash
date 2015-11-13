@@ -1,0 +1,241 @@
+{% extends "dashboard.html" %}
+
+{% block metric_title %}
+<h1 class="page-header"><i class="fa fa-bar-chart-o fa-fw"></i>{{ agent.display }} - {{ agent.table }}</h1>
+{% endblock %}
+
+{% block content %}
+<div class="col-lg-12">
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <span id="chart_title">
+                <b>{{ agent.units[0].display|title }} ({{ agent.units[0].unit }})</b>
+            </span>
+            <div class="pull-right">
+                <span>
+                    <div class="btn-group btn-grp-tooltip">
+                        <button type="button" id="horizon_chart_more_height" class="btn btn-xs btn-default" data-toggle="toolip" title=""> + </button>
+                        <button type="button" id="horizon_chart_height" class="btn btn-xs btn-default" data-toggle="toolip">Height</button>
+                        <button type="button" id="horizon_chart_less_height" class="btn btn-xs btn-default" data-toggle="toolip" title=""> - </button>
+                    </div>
+                    <div class="btn-group btn-grp-tooltip">
+                        <button type="button" id="horizon_chart_more_extent" class="btn btn-xs btn-default" data-toggle="tooltip"> + </button>
+                        <button type="button" id="horizon_chart_extent" class="btn btn-xs btn-default" data-toggle="tooltip" title="Set based on data">Extent</button>
+                        <button type="button" id="horizon_chart_less_extent" class="btn btn-xs btn-default" data-toggle="tooltip"> - </button>
+                    </div>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown">
+                            Chart Units
+                            <span class="caret"></span>
+                        </button>
+                        <ul class="dropdown-menu pull-right" role="menu">
+                            {% for unit in agent.units %}
+                            <li>
+                                <a href="#" id="units_{{ unit.data_key }}">{{ unit.display|title }}</a>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown">
+                            Sort By
+                            <span class="caret"></span>
+                        </button>
+                        <ul class="dropdown-menu pull-right" role="menu">
+                            <li><a href="#" class="horizon_chart_sort_name_ascend">Node Name Ascending</a> </li>
+                            <li><a href="#" class="horizon_chart_sort_name_descend">Node Name Descending</a> </li>
+                        </ul>
+                    </div>
+                </span>
+            </div>
+        </div>
+        <!-- /.panel-heading -->
+        <!-- /.panel-body -->
+        <div class="panel-body">
+            <link type="text/css" rel="stylesheet" href="{{ url_for('static', filename='css/horizon_chart.css') }}"></link>
+            <div class="panel-body" id="horizon_charts_id">
+            <script type="text/javascript">
+
+                var context = cubism.context();
+                var nodes = [];
+                var horz_height = 60;
+                var chart_units = "{{ agent.units[0].data_key }}";  {## first unit is default ##}
+                var max_extent = 100;   // will get overwritten with new data.
+                var set_extent = false;
+                var agent = "{{ agent.table }}";
+
+                $(document).ready(function() {
+                    $('[data-toggle="tooltip"]').tooltip({'placement': 'top'});
+                    reset_horizons();
+                });
+
+                $("body").tooltip({ selector: '[data-toggle="tooltip"]' });
+                
+                function reset_horizons() {
+                    d3.json(window.location.origin + "/api/horizon_chart/{{ agent.table }}/nodes",
+                            function(error, json) {
+                        if (error) return console.log('nodes error', error);
+                        console.log('got nodes msg', json);
+                        nodes = json['nodes'];
+                        nodes.sort();
+                        update_horizons();
+                    });
+            
+                }
+               
+                function update_horizons() {
+                    context = cubism.context()
+                                    .step(1000)         // one second per value
+                                    .size($("#horizon_charts_id").width()-30); // bs gives 30px padding.
+
+                    d3.select("#horizon_charts_id").selectAll(".axis")
+                        .data(["top", "bottom"])
+                      .enter().append("div")
+                        .attr("class", function(d) { return d + " axis"; })
+                        .each(function(d) { d3.select(this).call(context.axis().orient(d)); });
+                   
+                    // Until we get the line in the correct place, do not display it.
+                    // d3.select("#horizon_charts_id").append("div")
+                    //     .attr("class", "rule")
+                    //     .call(context.rule());
+
+                    d3.select("#horizon_charts_id").selectAll(".horizon")
+                        .data(nodes.map(get_data))
+                      .enter().insert("div", ".bottom")
+                        .attr("class", "horizon")
+                        .call(context.horizon()
+                           .height(horz_height)
+                           .extent([0, max_extent]));
+
+                    set_height_tooltips();
+                    set_extent_tooltips();
+                }
+              
+                {# create per unit drop down menu handler #}
+                {% for unit in agent.units %}
+                    $("#units_{{ unit.data_key }}").click(function(event) {
+                        chart_units = "{{ unit.data_key }}";
+                        $("#chart_title").html("<b> {{ unit.display|title }} {{ unit.units }}</b>");
+                        d3.select("#horizon_charts_id").selectAll("*").remove();
+                        max_extent = 100;
+                        update_horizons();
+                    });
+                {% endfor %}
+
+                $('.horizon_chart_sort_name_ascend').click(function(event) {
+                    nodes.sort();
+                    d3.select("#horizon_charts_id").selectAll(".axis").remove();
+                    d3.select("#horizon_charts_id").selectAll(".horizon").remove();
+                    update_horizons();
+                });
+
+                $('.horizon_chart_sort_name_descend').click(function(event) {
+                    nodes.sort();
+                    nodes.reverse();
+                    d3.select("#horizon_charts_id").selectAll(".axis").remove();
+                    d3.select("#horizon_charts_id").selectAll(".horizon").remove();
+                    update_horizons();
+                });
+
+                $('#horizon_chart_more_height').click(function(event) {
+                    console.log('more height clicked');
+                    horz_height += (horz_height/2);
+                    set_height_tooltips();
+                    d3.select("#horizon_charts_id").selectAll(".axis").remove();
+                    d3.select("#horizon_charts_id").selectAll(".horizon").remove();
+                    update_horizons();
+                });
+
+                $('#horizon_chart_less_height').click(function(event) {
+                    if (horz_height > 15) {
+                        horz_height -= (horz_height/2);
+                        set_height_tooltips();
+                        d3.select("#horizon_charts_id").selectAll(".axis").remove();
+                        d3.select("#horizon_charts_id").selectAll(".horizon").remove();
+                        update_horizons();
+                    }
+                });
+
+                $('#horizon_chart_extent').click(function(event) {
+                        console.log('#horizon_chart_extent clicked')
+                        set_extent = true;
+                        d3.select("#horizon_charts_id").selectAll(".axis").remove();
+                        d3.select("#horizon_charts_id").selectAll(".horizon").remove();
+                        update_horizons();
+                });
+                $('#horizon_chart_more_extent').click(function(event) {
+                    max_extent += (max_extent/2);
+                    set_extent_tooltips();
+                    d3.select("#horizon_charts_id").selectAll(".axis").remove();
+                    d3.select("#horizon_charts_id").selectAll(".horizon").remove();
+                    update_horizons();
+                });
+
+                $('#horizon_chart_less_extent').click(function(event) {
+                    if (max_extent > 20) {
+                        max_extent -= (max_extent/2);
+                        set_extent_tooltips();
+                        d3.select("#horizon_charts_id").selectAll(".axis").remove();
+                        d3.select("#horizon_charts_id").selectAll(".horizon").remove();
+                        update_horizons();
+                    }
+                });
+
+                function set_height_tooltips() {
+                    document.getElementById("horizon_chart_more_height").setAttribute(
+                            "title", (horz_height + (horz_height/2)));
+                    document.getElementById("horizon_chart_height").setAttribute("Title", horz_height);
+                    document.getElementById("horizon_chart_less_height").setAttribute(
+                            "title", (horz_height - (horz_height/2)));
+                }
+
+                function set_extent_tooltips() {
+                    document.getElementById("horizon_chart_more_extent").setAttribute(
+                            "title", (max_extent + (max_extent/2)));
+                    document.getElementById("horizon_chart_less_extent").setAttribute(
+                            "title", (max_extent - (max_extent/2)));
+                }
+
+                function get_data(node) {
+                    return context.metric(function(start, stop, step, callback) {
+                        start = +start, stop = +stop;
+                        url = window.location.origin + "/api/{{ agent.datatype }}/json?";
+                        url += 'start=' + (start / 1000);
+                        url += '&stop=' + (stop / 1000);
+                        url += '&step=' + (step / 1000);
+                        url += '&node=' + node;
+                        url += '&metric=' + chart_units;
+                        url += '&agent=' + agent;
+                        d3.json(url, function(error, json) {
+                            if (error) { 
+                                console.log('error', error);
+                                callback(error, []);
+                            }
+                            else if (! 'counts' in json) {
+                                callback('bad json data: ' + json, []);
+                            }
+                            else {
+                                if (set_extent) {
+                                    if (json['max_extent'] > max_extent) {
+                                        max_extent = json['max_extent'];
+                                        console.log('new max_extent: ' + max_extent);
+                                        set_extent = false;
+                                    }
+                                }
+                                callback(null, json['counts']);
+                            }
+                        });
+                    }, node);
+                }
+                </script>
+            </div> <!-- /#horizon_charts_id -->
+        </div>
+        <div class="panel-footer">
+            <a href='https://square.github.io/cubism'> So what's all this then? </a>
+        </div>
+        <!-- /.panel-body -->
+    </div>
+</div>
+<!-- /.col-lg-4 -->
+{% endblock %}
+

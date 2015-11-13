@@ -1,0 +1,142 @@
+{% extends "dashboard.html" %}
+
+{% block metric_title %}
+<h1 class="page-header"><i class="fa fa-bar-chart-o fa-fw"></i>{{ agent.display }}</h1>
+{% endblock %}
+
+{% block content %}
+<!-- selected node info -->
+<div class="col-lg-12">
+    <div class="row" id="selected_node_panels">
+    </div>
+</div>
+<div class="col-lg-12">
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <span id="deter_topology_chart_title">
+                <b> {{ agent.display }} </b>
+            </span>
+        </div>
+        {##### PANEL BODY START #########}
+        <div class="panel-body" id="deter_topology">
+            <style>
+                @import url({{ url_for('static', filename='css/deter_topology.css') }})
+            </style>
+            <script type="text/javascript">
+
+                $(document).ready(load_exp_info());
+
+                var width = 1200,
+                    height = 600;
+                
+                var nodes = [],
+                    links = [];
+                
+                var force = d3.layout.force()
+                    .gravity(0.03)
+                    .distance(100)
+                    .charge(-175)
+                    .linkDistance(80)
+                    .size([width, height])
+                    .nodes(nodes)
+                    .links(links);
+                
+                var svg = d3.select("#deter_topology").append("svg")
+                    .attr("width", $("#deter_topology").width())
+                    .attr("height", height);
+                
+                var link = svg.selectAll(".link"),
+                    node = svg.selectAll(".node");
+               
+                var exp_info = [];
+
+                function load_exp_info() {
+                    d3.json(window.location.origin + '/api/exp_info', function(error, json) {
+                            if(error) return console.log('get exp info error', error);
+                            $("#deter_topology_chart_title").html(
+                                    "<b> Experiment: " + json['project'] + "/" + json['experiment']);
+                            exp_info = json;
+
+                            load_topology();
+                    });
+                }
+
+                function load_topology() {
+                    d3.json(window.location.origin + '/api/topology', function(error, json) {
+                            if(error) return console.log('get topo error', error);
+                            
+                            console.log('nodes', json['nodes'])
+                            console.log('edges', json['edges'])
+                            nodes = [];
+                            links = [];
+                            for(var i = 0; i < json['nodes'].length; i++) {
+                                n = json['nodes'][i];
+                                nodes.push({name: n, container: exp_info[n]['is_container']});
+                            }
+                            for(var i = 0; i <  json['edges'].length; i++) {
+                                s = json['edges'][i][0]
+                                t = json['edges'][i][1]
+                                si = json['nodes'].indexOf(s)
+                                ti = json['nodes'].indexOf(t)
+                                name = s + '-' + t
+                                console.log('adding link', si, ti, name);
+                                links.push({source: si, target: ti, name: name});
+                            }
+                            update_topology();
+                    });
+                }
+                
+                function update_topology() {
+                    console.log("Updating topology.");
+                    force.nodes(nodes).links(links).start();
+
+                    link = link.data(force.links(), function(d) { return d.name; });
+                    link.enter().append("line")
+                        .attr("class", "link");
+                    link.exit().remove();
+                
+                    node = node.data(force.nodes(), function(d) { return d.name; });
+                    node.exit().remove();
+               
+                    nodegroup = node.enter().
+                        append("g").
+                        attr("class", "node").
+                        call(force.drag);
+
+                    node_circ = nodegroup.append("circle").attr("r", 8)
+                    // node_circ.on('click', node_click)
+                    node_text = nodegroup.append("text").attr("dx", ".8em").attr("dy", ".8em")
+                        .text(function(d) { return d.name; });
+                }
+
+                force.on('tick', function() {
+                    link.attr("x1", function(d) { return d.source.x; })
+                        .attr("y1", function(d) { return d.source.y; })
+                        .attr("x2", function(d) { return d.target.x; })
+                        .attr("y2", function(d) { return d.target.y; });
+                
+                    node.attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
+                });
+                
+                // function node_click(node) {
+                //     var node_id = 'node_info_' + node.name;
+                //     console.log('node clicked: ', node, 'node id: ', node_id);
+                //     $("#selected_node_panels").append("<div class='panel panel-default' id=" + node_id + "></div>");
+
+                //     jQuery('<div/>', {
+                //         class: 'panel-heading',
+                //         id: 'selected_node_' + node.name,
+                //         text: "Node: " + node.name
+                //     }).appendTo('#' + node_id);
+
+                //     jQuery('<div/>', {
+                //         class: "panel-body",
+                //         text: 'Container: ' + node.container
+                //     }).appendTo('#' + node_id);
+                // }
+            </script>
+            {##### PANEL BODY END #########}
+        </div>
+    </div>
+</div>
+{% endblock %}

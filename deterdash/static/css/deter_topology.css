@@ -1,0 +1,29 @@
+.link {
+    fill: none;
+    stroke: grey;
+    stroke-width: 2.5px;
+}
+.link-label {
+    font-size: 16px;
+    font-family: sans-serif;
+    stroke: red;
+    fill: black;
+    stroke-width: 1px;
+}
+.node {
+    cursor: pointer;
+    stroke: blue;
+    fill: white;
+    stroke-width: 1px;
+}
+.node-text {
+    font-size: 16px;
+    font-family: sans-serif;
+    stroke: blue;
+    fill: blue;
+    stroke-width: 1px;
+    pointer-events: none;
+}
+.node.selected {
+    stroke: red;
+}
