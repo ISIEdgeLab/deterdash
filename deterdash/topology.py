@@ -10,7 +10,7 @@ def get_nodes():
     # just grab the nodes from the most recent topo_agent insert.
     db = magi_db()
     cursor = db.experiment_data.find({'agent': 'topo_agent'},
-                                     {'_id': False, 'nodes': True}).sort('created', pymongo.ASCENDING)
+                                     {'_id': False, 'nodes': True}).sort('created', pymongo.DESCENDING)
     if cursor.count():
         return json.loads(cursor[0]['nodes'])
 
@@ -21,7 +21,7 @@ def get_topology():
     db = magi_db()
     cursor = db.experiment_data.find(
         {'agent': 'topo_agent'},
-        {'_id': False, 'nodes': True, 'edges': True}).sort('created', pymongo.ASCENDING)
+        {'_id': False, 'nodes': True, 'edges': True}).sort('created', pymongo.DESCENDING)
 
     if cursor.count():
         return json.loads(cursor[0]['nodes']), json.loads(cursor[0]['edges'])
