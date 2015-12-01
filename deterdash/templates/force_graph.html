@@ -71,7 +71,12 @@
                             links = [];
                             for(var i = 0; i < json['nodes'].length; i++) {
                                 n = json['nodes'][i];
-                                nodes.push({name: n, container: exp_info[n]['is_container']});
+				if(n in exp_info){
+                                	nodes.push({name: n, container: exp_info[n]['is_container']});
+				}
+				else {
+					nodes.push({name: n, container: false});
+				}
                             }
                             for(var i = 0; i <  json['edges'].length; i++) {
                                 s = json['edges'][i][0]
