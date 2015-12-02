@@ -4,9 +4,11 @@ from flask import render_template, jsonify, request
 
 from . import app
 from .topology import get_nodes, get_topology
-from .viz_data import get_viz_data, get_viz_ui_types, get_viz_agents, get_viz_agent
+from .viz_data import get_viz_ui_types, get_viz_agents, get_viz_agent
 from .viz_data import get_viz_agent_nodes
 from .exp_info import get_exp_info
+
+from .horizon_chart import get_viz_horz_data
 
 log = logging.getLogger(__name__)
 
@@ -81,10 +83,14 @@ def http_client_request(data_source):
     #     datetime.fromtimestamp(start).strftime('%h:%m:%s'),
     #     datetime.fromtimestamp(stop).strftime('%h:%m:%s'),
     #     step))
+    
+    if data_source == 'horizon_chart':
+        data = get_viz_horz_data(start, stop, step, node, metric, agent)
+    else:
+        data = None
 
-    data = get_viz_data(start, stop, step, node, metric, agent, data_source)
-    if data == None:
-        return jsonify(status=1, counts=[], max_extent = 0)
+    if not data:
+        return jsonify(status=1, counts=[], max_extent=0)
 
     return jsonify(status=0, counts=data, max_extent=max(data))
 

@@ -1,6 +1,6 @@
 # Requirements (in order):
 
-MAGI installed and running.
-
-sudo apt-get -y install python-flask python-pymongo
+* MAGI installed and running.
+* libdeterbash installed in system dirs (this should be done automatically by Magi)
+* sudo apt-get -y install python-flask python-pymongo
 

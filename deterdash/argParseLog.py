@@ -2,7 +2,6 @@ import logging
 
 log = logging.getLogger(__name__)
 
-
 def handleLoggingArgs(args):
     logLevels = {
        u'none': 100,
