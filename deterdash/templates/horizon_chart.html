@@ -13,6 +13,7 @@
             </span>
             <div class="pull-right">
                 <span>
+                    {#############
                     <div class="btn-group btn-grp-tooltip">
                         <button type="button" id="horizon_chart_more_height" class="btn btn-xs btn-default" data-toggle="toolip" title=""> + </button>
                         <button type="button" id="horizon_chart_height" class="btn btn-xs btn-default" data-toggle="toolip">Height</button>
@@ -23,6 +24,7 @@
                         <button type="button" id="horizon_chart_extent" class="btn btn-xs btn-default" data-toggle="tooltip" title="Set based on data">Extent</button>
                         <button type="button" id="horizon_chart_less_extent" class="btn btn-xs btn-default" data-toggle="tooltip"> - </button>
                     </div>
+                    ###############}
                     <div class="btn-group">
                         <button type="button" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown">
                             Chart Units
@@ -34,6 +36,10 @@
                                 <a href="#" id="units_{{ unit.data_key }}">{{ unit.display|title }}</a>
                             </li>
                             {% endfor %}
+                            {# GTL test horizon chart with out DB access #}
+                            <li>
+                                <a href="#" id="units_random">Random</a>
+                            </li>
                         </ul>
                     </div>
                     <div class="btn-group">
@@ -56,59 +62,57 @@
             <div class="panel-body" id="horizon_charts_id">
             <script type="text/javascript">
 
-                var context = cubism.context();
+                var context = cubism.context()
+                                    .serverDelay(10 * 1000)
+                                    .step(1000) // one second per step
+                                    .size($("#horizon_charts_id").width()-30);
                 var nodes = [];
-                var horz_height = 60;
                 var chart_units = "{{ agent.units[0].data_key }}";  {## first unit is default ##}
                 var max_extent = 100;   // will get overwritten with new data.
                 var set_extent = false;
                 var agent = "{{ agent.table }}";
+                var height = 120;
+                var horizon = context.horizon().height(height)
 
                 $(document).ready(function() {
                     $('[data-toggle="tooltip"]').tooltip({'placement': 'top'});
-                    reset_horizons();
+                    build_horizons();
                 });
 
                 $("body").tooltip({ selector: '[data-toggle="tooltip"]' });
-                
-                function reset_horizons() {
-                    d3.json(window.location.origin + "/api/horizon_chart/{{ agent.table }}/nodes",
-                            function(error, json) {
-                        if (error) return console.log('nodes error', error);
+               
+                context.on("focus", function(i) {
+                    d3.selectAll(".value")
+                        .style( "right", i == null ? null : context.size() - i + "px");
+                });
+
+                function build_horizons() {
+                    url = "/api/horizon_chart/{{ agent.table }}/nodes";
+                    d3.json(window.location.origin + url, function(error, json) {
+                        if (error) {
+                            return console.log('nodes error', error);
+                        }
                         console.log('got nodes msg', json);
                         nodes = json['nodes'];
                         nodes.sort();
-                        update_horizons();
-                    });
-            
-                }
-               
-                function update_horizons() {
-                    context = cubism.context()
-                                    .step(1000)         // one second per value
-                                    .size($("#horizon_charts_id").width()-30); // bs gives 30px padding.
 
-                    d3.select("#horizon_charts_id").selectAll(".axis")
-                        .data(["top", "bottom"])
-                      .enter().append("div")
-                        .attr("class", function(d) { return d + " axis"; })
-                        .each(function(d) { d3.select(this).call(context.axis().orient(d)); });
-                   
-                    // Until we get the line in the correct place, do not display it.
-                    // d3.select("#horizon_charts_id").append("div")
-                    //     .attr("class", "rule")
-                    //     .call(context.rule());
+                        d3.select("#horizon_charts_id").selectAll(".axis")
+                            .data(["top", "bottom"])
+                          .enter().append("div")
+                            .attr("class", function(d) { return d + " axis"; })
+                            .each(function(d) { d3.select(this).call(context.axis().orient(d)); });
+                       
+                        horizon.metric(get_data)
 
-                    d3.select("#horizon_charts_id").selectAll(".horizon")
-                        .data(nodes.map(get_data))
-                      .enter().insert("div", ".bottom")
-                        .attr("class", "horizon")
-                        .call(context.horizon()
-                           .height(horz_height)
-                           .extent([0, max_extent]));
+                        hs = d3.select("#horizon_charts_id").selectAll(".horizon")
+                                    .data(nodes)
 
-                    set_height_tooltips();
-                    set_extent_tooltips();
+                        hs.enter().insert("div", ".bottom")
+                                  .attr("class", "horizon")
+                                  .call(horizon)
+
+                        hs.exit().remove()
+                    })
                 }
               
                 {# create per unit drop down menu handler #}
@@ -118,15 +122,23 @@
                         $("#chart_title").html("<b> {{ unit.display|title }} {{ unit.units }}</b>");
                         d3.select("#horizon_charts_id").selectAll("*").remove();
                         max_extent = 100;
-                        update_horizons();
+                        build_horizons();
                     });
                 {% endfor %}
+                {# GTL - testing. #}
+                $("#units_random").click(function(event) {
+                    chart_units = "random";
+                    $("#chart_title").html("<b> Random data around 100. </b>");
+                    d3.select("#horizon_charts_id").selectAll("*").remove();
+                    max_extent = 150;
+                    build_horizons();
+                });
 
                 $('.horizon_chart_sort_name_ascend').click(function(event) {
                     nodes.sort();
                     d3.select("#horizon_charts_id").selectAll(".axis").remove();
                     d3.select("#horizon_charts_id").selectAll(".horizon").remove();
-                    update_horizons();
+                    build_horizons();
                 });
 
                 $('.horizon_chart_sort_name_descend').click(function(event) {
@@ -134,16 +146,16 @@
                     nodes.reverse();
                     d3.select("#horizon_charts_id").selectAll(".axis").remove();
                     d3.select("#horizon_charts_id").selectAll(".horizon").remove();
-                    update_horizons();
+                    build_horizons();
                 });
 
                 $('#horizon_chart_more_height').click(function(event) {
                     console.log('more height clicked');
-                    horz_height += (horz_height/2);
+                    height += (horz_height/2);
                     set_height_tooltips();
                     d3.select("#horizon_charts_id").selectAll(".axis").remove();
                     d3.select("#horizon_charts_id").selectAll(".horizon").remove();
-                    update_horizons();
+                    build_horizons();
                 });
 
                 $('#horizon_chart_less_height').click(function(event) {
@@ -152,7 +164,7 @@
                         set_height_tooltips();
                         d3.select("#horizon_charts_id").selectAll(".axis").remove();
                         d3.select("#horizon_charts_id").selectAll(".horizon").remove();
-                        update_horizons();
+                        build_horizons();
                     }
                 });
 
@@ -161,14 +173,14 @@
                         set_extent = true;
                         d3.select("#horizon_charts_id").selectAll(".axis").remove();
                         d3.select("#horizon_charts_id").selectAll(".horizon").remove();
-                        update_horizons();
+                        build_horizons();
                 });
                 $('#horizon_chart_more_extent').click(function(event) {
                     max_extent += (max_extent/2);
                     set_extent_tooltips();
                     d3.select("#horizon_charts_id").selectAll(".axis").remove();
                     d3.select("#horizon_charts_id").selectAll(".horizon").remove();
-                    update_horizons();
+                    build_horizons();
                 });
 
                 $('#horizon_chart_less_extent').click(function(event) {
@@ -177,7 +189,7 @@
                         set_extent_tooltips();
                         d3.select("#horizon_charts_id").selectAll(".axis").remove();
                         d3.select("#horizon_charts_id").selectAll(".horizon").remove();
-                        update_horizons();
+                        build_horizons();
                     }
                 });
 
@@ -198,6 +210,7 @@
 
                 function get_data(node) {
                     return context.metric(function(start, stop, step, callback) {
+                        var values = [];
                         start = +start, stop = +stop;
                         url = window.location.origin + "/api/{{ agent.datatype }}/json?";
                         url += 'start=' + (start / 1000);
@@ -215,6 +228,7 @@
                                 callback('bad json data: ' + json, []);
                             }
                             else {
+                                values = json['counts'];
                                 if (set_extent) {
                                     if (json['max_extent'] > max_extent) {
                                         max_extent = json['max_extent'];
@@ -222,7 +236,12 @@
                                         set_extent = false;
                                     }
                                 }
-                                callback(null, json['counts']);
+                                // GTL DEBUG
+                                if (node == "enclave1" || node == "traf11") {
+                                    console.log(Math.floor(Date.now() / 1000) + ": " + node + 
+                                        " counts: ", values);
+                                }
+                                callback(null, values);
                             }
                         });
                     }, node);
