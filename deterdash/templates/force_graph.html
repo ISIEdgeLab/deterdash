@@ -18,162 +18,378 @@
             </span>
         </div>
         {##### PANEL BODY START #########}
-        <div class="panel-body" id="deter_topology">
-            <style>
-                @import url({{ url_for('static', filename='css/deter_topology.css') }})
-            </style>
-            <script type="text/javascript">
+        <div class="panel-body" id="deter_topology" style="max-height: 800px; min-height: 800px">
+    <script>
+        <!-- Most of this code stolen from: http://bl.ocks.org/eyaler/10586116 -->
+        var margin = {top: -5, right: -5, bottom: -5, left: -5},
+            w = 600 - margin.left - margin.right,
+            h = 800 - margin.top - margin.bottom;
 
-                $(document).ready(load_exp_info());
+        var keyc = true, keys = true, keyt = true, keyr = true, keyx = true, keyd = true, keyl = true, keym = true, keyh = true, key1 = true, key2 = true, key3 = true, key0 = true
 
-                var margin = {top: -5, right: -5, bottom: -5, left: -5},
-                    width = 1200 - margin.left - margin.right,
-                    height = 1200 - margin.top - margin.bottom;
+        var focus_node = null, highlight_node = null;
 
-                var zoom = d3.behavior.zoom()
-                             .scaleExtent([1, 50])
-                             .on("zoom", zoomed);
+        var text_center = true;
+        var outline = false;
 
-                var drag = d3.behavior.drag()
-                        .origin(function(d) { return d; })
-                        .on("dragstart", dragstarted)
-                        .on("drag", dragged)
-                        .on("dragend", dragended);
+        var min_score = 0;
+        var max_score = 1;
 
-                var nodes = [],
-                    links = [];
-                
-                var force = d3.layout.force()
-                    .gravity(0.03)
-                    .distance(100)
-                    .charge(-175)
-                    .linkDistance(80)
-                    .size([width, height])
-                    .nodes(nodes)
-                    .links(links);
-                
-                var svg = d3.select("#deter_topology").append("svg")
-                      .attr("width", $("#deter_topology").width())
-                      .attr("height", height)
-                    .append("g")
-                      .attr("transform", "translate(" + margin.left + "," + margin.right + ")")
-                      .call(zoom)
-                
-                var container = svg.append("g");
-                
-                var link = container.selectAll(".link"),
-                    node = container.selectAll(".node");
-               
-                var exp_info = [];
+        var color = d3.scale.linear()
+                        .domain([min_score, (min_score+max_score)/2, max_score])
+                        .range(["lime", "yellow", "red"]);
 
-                function load_exp_info() {
-                    d3.json(window.location.origin + '/api/exp_info', function(error, json) {
-                            if(error) return console.log('get exp info error', error);
-                            $("#deter_topology_chart_title").html(
-                                    "<b> Experiment: " + json['project'] + "/" + json['experiment']);
-                            exp_info = json;
+        var highlight_color = "blue";
+        var highlight_trans = 0.1;
 
-                            load_topology();
+        var size = d3.scale.pow().exponent(1)
+                        .domain([1,100])
+                        .range([8,24]);
+
+        var force = d3.layout.force()
+                        .linkDistance(60)
+                        .charge(-300)
+                        .size([w,h]);
+
+        var default_node_color = "#ccc";
+        //var default_node_color = "rgb(3,190,100)";
+        var default_link_color = "#888";
+        var nominal_base_node_size = 8;
+        var nominal_text_size = 10;
+        var max_text_size = 24;
+        var nominal_stroke = 1.5;
+        var max_stroke = 4.5;
+        var max_base_node_size = 36;
+        var min_zoom = 0.1;
+        var max_zoom = 7;
+        var svg = d3.select("#deter_topology").append("svg");
+        var zoom = d3.behavior.zoom().scaleExtent([min_zoom,max_zoom])
+        var g = svg.append("g");
+        svg.style("cursor","move");
+
+        d3.json(window.location.origin + '/api/exp_info', function(error, json) {
+                if(error) return console.log('get exp info error', error);
+                $("#deter_topology_chart_title").html(
+                        "<b> Experiment: " + json['project'] + "/" + json['experiment']);
+                exp_info = json;
+
+                load_topology();
+        });
+
+
+        d3.json(window.location.origin + '/api/topology', function(error, json) {
+            if(error) return console.log('get topo error', error);
+
+            console.log('nodes', json['nodes'])
+            console.log('edges', json['edges'])
+
+            // build the nodes and links teh way the graph widget wants them
+            nodes = [];
+            links = [];
+            var linkedByIndex = {};
+            for(var i = 0; i < json['nodes'].length; i++) {
+                n = json['nodes'][i];
+                if (n=="sunnydale") {
+                    nodes.push({name: n, size: 60, score: 1, type: "square"});
+                }
+                else {
+                    nodes.push({name: n, size: 60, score: 0, type: "circle"});
+                }
+            }
+            for(var i = 0; i <  json['edges'].length; i++) {
+                s = json['edges'][i][0]
+                t = json['edges'][i][1]
+                si = json['nodes'].indexOf(s)
+                ti = json['nodes'].indexOf(t)
+                name = s + '-' + t
+                linkedByIndex[si + '-' + ti] = true;
+                console.log('adding link', si, ti, name);
+                links.push({source: si, target: ti, name: name});
+            }
+
+            function isConnected(a, b) {
+                return linkedByIndex[a.index + "-" + b.index] || linkedByIndex[b.index + "-" + a.index] || a.index == b.index;
+            }
+
+            function hasConnections(a) {
+                for (var property in linkedByIndex) {
+                    s = property.split("-");
+                    if ((s[0] == a.index || s[1] == a.index) && linkedByIndex[property]) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            force
+                .nodes(nodes)
+                .links(links)
+                .start();
+
+            var link = g.selectAll(".link")
+                        .data(links)
+                        .enter().append("line")
+                        .attr("class", "link")
+                        .style("stroke-width",nominal_stroke)
+                        .style("stroke", function(d) { 
+                            if (isNumber(d.score) && d.score>=0) { 
+                                return color(d.score);
+                            }
+                            else { 
+                                return default_link_color;
+                            }
+                        })
+
+            var node = g.selectAll(".node")
+                        .data(nodes)
+                        .enter().append("g")
+                        .attr("class", "node")
+                        .call(force.drag);
+
+            node.on("dblclick.zoom", function(d) { 
+                d3.event.stopPropagation();
+                var dcx = (window.innerWidth/2-d.x*zoom.scale());
+                var dcy = (window.innerHeight/2-d.y*zoom.scale());
+                zoom.translate([dcx,dcy]);
+                g.attr("transform", "translate("+ dcx + "," + dcy  + ")scale(" + zoom.scale() + ")");
+            });
+
+            var tocolor = "fill";
+            var towhite = "stroke";
+            if (outline) {
+                tocolor = "stroke"
+                towhite = "fill"
+            }
+
+            var circle = node.append("path")
+                        .attr("d", d3.svg.symbol()
+                            .size(function(d) { return Math.PI*Math.pow(size(d.size)||nominal_base_node_size,2); })
+                            .type(function(d) { return d.type; }))
+                        .style(tocolor, function(d) { 
+                            if (isNumber(d.score) && d.score>=0) return color(d.score);
+                            else return default_node_color; })
+                        .style("stroke-width", nominal_stroke)
+                        .style(towhite, "white");
+
+            var text = g.selectAll(".text")
+                        .data(nodes)
+                        .enter().append("text")
+                        .attr("dy", ".35em")
+                        .style("font-size", nominal_text_size + "px")
+
+            if (text_center) {
+                text.text(function(d) { return d.name; })
+                .style("text-anchor", "middle");
+            }
+            else {
+                text.attr("dx", function(d) {return (size(d.size)||nominal_base_node_size);})
+                    .text(function(d) { return '\u2002'+d.name; });
+            }
+
+            node.on("mouseover", function(d) { set_highlight(d); })
+                .on("mousedown", function(d) {
+                    d3.event.stopPropagation();
+                    focus_node = d;
+                    set_focus(d)
+                    if (highlight_node === null) set_highlight(d)
+
+                    })
+                .on("mouseout", function(d) {
+                    exit_highlight();
+                    });
+
+            d3.select(window).on("mouseup", function() {
+                if (focus_node!==null) {
+                    focus_node = null;
+                    if (highlight_trans<1) {
+                        circle.style("opacity", 1);
+                        text.style("opacity", 1);
+                        link.style("opacity", 1);
+                    }
+                }
+
+                if (highlight_node === null) exit_highlight();
+            });
+
+            function exit_highlight() {
+                highlight_node = null;
+                if (focus_node===null) {
+                    svg.style("cursor","move");
+                    if (highlight_color!="white") {
+                        circle.style(towhite, "white");
+                        text.style("font-weight", "normal");
+                        link.style("stroke", function(o) {
+                            return (isNumber(o.score) && o.score>=0)?color(o.score):default_link_color});
+                    }
+                }
+            }
+
+            function set_focus(d) {	
+                if (highlight_trans<1)  {
+                    circle.style("opacity", function(o) {
+                        return isConnected(d, o) ? 1 : highlight_trans;
+                    });
+
+                    text.style("opacity", function(o) {
+                        return isConnected(d, o) ? 1 : highlight_trans;
+                    });
+
+                    link.style("opacity", function(o) {
+                        return o.source.index == d.index || o.target.index == d.index ? 1 : highlight_trans;
+                    });		
+                }
+            }
+
+            function set_highlight(d) {
+                svg.style("cursor","pointer");
+                if (focus_node!==null) {
+                    d = focus_node;
+                }
+                highlight_node = d;
+
+                if (highlight_color!="white") {
+                    circle.style(towhite, function(o) { return isConnected(d, o) ? highlight_color : "white";});
+                    text.style("font-weight", function(o) { return isConnected(d, o) ? "bold" : "normal";});
+                    link.style("stroke", function(o) {
+                        return o.source.index == d.index || o.target.index == d.index ? highlight_color : ((isNumber(o.score) && o.score>=0)?color(o.score):default_link_color);
                     });
                 }
+            }
 
-                function load_topology() {
-                    d3.json(window.location.origin + '/api/topology', function(error, json) {
-                            if(error) return console.log('get topo error', error);
-                            
-                            console.log('nodes', json['nodes'])
-                            console.log('edges', json['edges'])
-                            nodes = [];
-                            links = [];
-                            for(var i = 0; i < json['nodes'].length; i++) {
-                                n = json['nodes'][i];
-				                if(n in exp_info){
-                                    nodes.push({name: n, container: exp_info[n]['is_container']});
-				                }
-				                else {
-				                	nodes.push({name: n, container: false});
-				                }
-                            }
-                            for(var i = 0; i <  json['edges'].length; i++) {
-                                s = json['edges'][i][0]
-                                t = json['edges'][i][1]
-                                si = json['nodes'].indexOf(s)
-                                ti = json['nodes'].indexOf(t)
-                                name = s + '-' + t
-                                console.log('adding link', si, ti, name);
-                                links.push({source: si, target: ti, name: name});
-                            }
-                            update_topology();
-                    });
+            zoom.on("zoom", function() {
+                var stroke = nominal_stroke;
+                if (nominal_stroke*zoom.scale()>max_stroke) {
+                    stroke = max_stroke/zoom.scale();
                 }
-                
-                function update_topology() {
-                    console.log("Updating topology.");
-                    force.nodes(nodes).links(links).start();
+                link.style("stroke-width",stroke);
+                circle.style("stroke-width",stroke);
 
-                    link = link.data(force.links(), function(d) { return d.name; });
-                    link.enter().append("line")
-                        .attr("class", "link");
-                    link.exit().remove();
-                
-                    node = node.data(force.nodes(), function(d) { return d.name; });
-                    node.exit().remove();
-               
-                    nodegroup = node.enter().
-                        append("g").
-                        attr("class", "node").
-                        call(force.drag);
+                var base_radius = nominal_base_node_size;
+                if (nominal_base_node_size*zoom.scale()>max_base_node_size) {
+                    base_radius = max_base_node_size/zoom.scale();
+                }
+                circle.attr("d", d3.svg.symbol()
+                    .size(function(d) { 
+                        return Math.PI*Math.pow(size(d.size)*base_radius/nominal_base_node_size||base_radius,2); })
+                    .type(function(d) { return d.type; }))
 
-                    node_circ = nodegroup.append("circle").attr("r", 8)
-                    // node_circ.on('click', node_click)
-                    node_text = nodegroup.append("text").attr("dx", ".8em").attr("dy", ".8em")
-                        .text(function(d) { return d.name; });
+                if (!text_center) {
+                    text.attr("dx", function(d) {
+                        return (size(d.size)*base_radius/nominal_base_node_size||base_radius); });
                 }
 
-                force.on('tick', function() {
-                    link.attr("x1", function(d) { return d.source.x; })
-                        .attr("y1", function(d) { return d.source.y; })
-                        .attr("x2", function(d) { return d.target.x; })
-                        .attr("y2", function(d) { return d.target.y; });
-                
-                    node.attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
-                });
-               
-                function zoomed() {
-                    container.attr("transform", "translate(" + d3.event.translate + ")scale(" +
-                            d3.event.scale + ")");
+                var text_size = nominal_text_size;
+                if (nominal_text_size*zoom.scale()>max_text_size) {
+                    text_size = max_text_size/zoom.scale();
                 }
+                text.style("font-size",text_size + "px");
 
-                function dragstarted(d) {
-                  d3.event.sourceEvent.stopPropagation();
-                  d3.select(this).classed("dragging", true);
+                g.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
+            });
+
+            svg.call(zoom);	  
+
+            resize();
+            //window.focus();
+            d3.select(window).on("resize", resize).on("keydown", keydown);
+
+            force.on("tick", function() {
+                node.attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
+                text.attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
+                link.attr("x1", function(d) { return d.source.x; })
+                    .attr("y1", function(d) { return d.source.y; })
+                    .attr("x2", function(d) { return d.target.x; })
+                    .attr("y2", function(d) { return d.target.y; });
+
+                node.attr("cx", function(d) { return d.x; })
+                    .attr("cy", function(d) { return d.y; });
+            });
+
+            function resize() {
+                // var width = window.innerWidth, height = window.innerHeight;
+                var width = $("#deter_topology").width(), height = $("#deter_topology").height();
+                svg.attr("width", width).attr("height", height);
+
+                force.size([force.size()[0]+(width-w)/zoom.scale(),force.size()[1]+(height-h)/zoom.scale()]).resume();
+                w = width;
+                h = height;
+            }
+
+            function keydown() {
+                if (d3.event.keyCode==32) {
+                    force.stop();
                 }
-                
-                function dragged(d) {
-                  d3.select(this).attr("cx", d.x = d3.event.x).attr("cy", d.y = d3.event.y);
-                }
-                
-                function dragended(d) {
-                  d3.select(this).classed("dragging", false);
-                } 
+                else if (d3.event.keyCode>=48 && d3.event.keyCode<=90 && !d3.event.ctrlKey && !d3.event.altKey && !d3.event.metaKey)
+                {
+                    switch (String.fromCharCode(d3.event.keyCode)) {
+                        case "C": keyc = !keyc; break;
+                        case "S": keys = !keys; break;
+                        case "T": keyt = !keyt; break;
+                        case "R": keyr = !keyr; break;
+                        case "X": keyx = !keyx; break;
+                        case "D": keyd = !keyd; break;
+                        case "L": keyl = !keyl; break;
+                        case "M": keym = !keym; break;
+                        case "H": keyh = !keyh; break;
+                        case "1": key1 = !key1; break;
+                        case "2": key2 = !key2; break;
+                        case "3": key3 = !key3; break;
+                        case "0": key0 = !key0; break;
+                    }
 
-                // function node_click(node) {
-                //     var node_id = 'node_info_' + node.name;
-                //     console.log('node clicked: ', node, 'node id: ', node_id);
-                //     $("#selected_node_panels").append("<div class='panel panel-default' id=" + node_id + "></div>");
+                    link.style("display", function(d) {
+                        var flag = vis_by_type(d.source.type)&&vis_by_type(d.target.type)&&vis_by_node_score(d.source.score)&&vis_by_node_score(d.target.score)&&vis_by_link_score(d.score);
+                        linkedByIndex[d.source.index + "-" + d.target.index] = flag;
+                        return flag?"inline":"none";});
+                    node.style("display", function(d) {
+                        return (key0||hasConnections(d))&&vis_by_type(d.type)&&vis_by_node_score(d.score)?"inline":"none";});
+                    text.style("display", function(d) {
+                        return (key0||hasConnections(d))&&vis_by_type(d.type)&&vis_by_node_score(d.score)?"inline":"none";});
 
-                //     jQuery('<div/>', {
-                //         class: 'panel-heading',
-                //         id: 'selected_node_' + node.name,
-                //         text: "Node: " + node.name
-                //     }).appendTo('#' + node_id);
+                    if (highlight_node !== null) {
+                        if ((key0||hasConnections(highlight_node))&&vis_by_type(highlight_node.type)&&vis_by_node_score(highlight_node.score)) { 
+                            if (focus_node!==null) set_focus(focus_node);
+                            set_highlight(highlight_node);
+                        }
+                        else {exit_highlight();}
+                    }
+                }	
+            }
+        });
 
-                //     jQuery('<div/>', {
-                //         class: "panel-body",
-                //         text: 'Container: ' + node.container
-                //     }).appendTo('#' + node_id);
-                // }
-            </script>
+        function vis_by_type(type) {
+            switch (type) {
+                case "circle": return keyc;
+                case "square": return keys;
+                case "triangle-up": return keyt;
+                case "diamond": return keyr;
+                case "cross": return keyx;
+                case "triangle-down": return keyd;
+                default: return true;
+            }
+        }
+        function vis_by_node_score(score) {
+            if (isNumber(score)) {
+                if (score>=0.666) return keyh;
+                else if (score>=0.333) return keym;
+                else if (score>=0) return keyl;
+            }
+            return true;
+        }
+
+        function vis_by_link_score(score) {
+            if (isNumber(score)) {
+                if (score>=0.666) return key3;
+                else if (score>=0.333) return key2;
+                else if (score>=0) return key1;
+            }
+            return true;
+        }
+
+        function isNumber(n) {
+            return !isNaN(parseFloat(n)) && isFinite(n);
+        }	
+    </script>
             {##### PANEL BODY END #########}
         </div>
     </div>
