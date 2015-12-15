@@ -5,11 +5,6 @@
 {% endblock %}
 
 {% block content %}
-<!-- selected node info -->
-<div class="col-lg-12">
-    <div class="row" id="selected_node_panels">
-    </div>
-</div>
 <div class="col-lg-12">
     <div class="panel panel-default">
         <div class="panel-heading">
@@ -18,12 +13,12 @@
             </span>
         </div>
         {##### PANEL BODY START #########}
-        <div class="panel-body" id="deter_topology" style="max-height: 800px; min-height: 800px">
+        <div class="panel-body" id="deter_topology" style="max-height: 600px; min-height: 600px">
     <script>
         <!-- Most of this code stolen from: http://bl.ocks.org/eyaler/10586116 -->
         var margin = {top: -5, right: -5, bottom: -5, left: -5},
             w = 600 - margin.left - margin.right,
-            h = 800 - margin.top - margin.bottom;
+            h = 600 - margin.top - margin.bottom;
 
         var keyc = true, keys = true, keyt = true, keyr = true, keyx = true, keyd = true, keyl = true, keym = true, keyh = true, key1 = true, key2 = true, key3 = true, key0 = true
 
@@ -47,14 +42,15 @@
                         .range([8,24]);
 
         var force = d3.layout.force()
-                        .linkDistance(60)
-                        .charge(-300)
+                        .linkDistance(80)
+                        .charge(-500)
+                        .gravity(.1)
                         .size([w,h]);
 
         var default_node_color = "#ccc";
         //var default_node_color = "rgb(3,190,100)";
         var default_link_color = "#888";
-        var nominal_base_node_size = 8;
+        var nominal_base_node_size = 12;
         var nominal_text_size = 10;
         var max_text_size = 24;
         var nominal_stroke = 1.5;
@@ -89,12 +85,7 @@
             var linkedByIndex = {};
             for(var i = 0; i < json['nodes'].length; i++) {
                 n = json['nodes'][i];
-                if (n=="sunnydale") {
-                    nodes.push({name: n, size: 60, score: 1, type: "square"});
-                }
-                else {
-                    nodes.push({name: n, size: 60, score: 0, type: "circle"});
-                }
+                nodes.push({name: n, size: 80, score: 0, type: "circle"});
             }
             for(var i = 0; i <  json['edges'].length; i++) {
                 s = json['edges'][i][0]
@@ -152,6 +143,79 @@
                 var dcy = (window.innerHeight/2-d.y*zoom.scale());
                 zoom.translate([dcx,dcy]);
                 g.attr("transform", "translate("+ dcx + "," + dcy  + ")scale(" + zoom.scale() + ")");
+            });
+
+            var $template = $(".node_template");
+            $template.hide();
+
+            node.on('click', function(d) {
+                if (d3.event.defaultPrevented) return;
+                console.log('node ' + d.name + ' clicked');
+                var $node = document.getElementById(d.name+"_panel");
+                if ($node === null) {
+                    d3.select(this).select('path').style('fill', 'red');
+                    var $node_panel = $template.clone();
+                    $node_panel.attr("id", d.name+"_panel"); 
+                    $node_panel.find(".panel-heading").text("Node: " + d.name);
+                    $node_panel.find(".panel-body").attr("id", d.name+"_panel_body");
+                    $node_panel.find(".panel-body").text("");
+                    $("#node_panels").append($node_panel.fadeIn());
+
+                    var margin = {top: 10, right: 10, bottom: 18, left: 23},
+                        width = 300 - margin.left - margin.right,
+                        height = 200 - margin.top - margin.bottom;
+
+                    var points = d3.range(10).map(function() { return { 
+                            x: Math.random() * 100, y: Math.random() * 100}});
+
+                    points = points.sort(function(a, b) { return d3.descending(a.x, b.x); });            
+
+                    var x = d3.scale.linear().range([0, width]),
+                        y = d3.scale.linear().range([height, 0]);
+
+                    var x_axis = d3.svg.axis().scale(x).orient('bottom');
+                    var y_axis = d3.svg.axis().scale(y).orient('left');
+                    var line = d3.svg.line()
+                                .x(function(d) { return x(d.x); })
+                                .y(function(d) { return y(d.y); })
+                                .interpolate("basis");
+
+                    var plot = d3.select("#"+d.name+"_panel_body").append('svg')
+                                .attr("height", height + margin.top + margin.bottom)
+                                .style('font', '10px')
+                                 .append('g')
+                                 .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+                    x.domain(d3.extent(points, function(d) { return d.x; }));
+                    y.domain(d3.extent(points, function(d) { return d.y; }));
+
+                    plot.append('g')
+                        .attr('class', 'x axis')
+                        .attr("transform", "translate(0," + height + ")")
+                        .call(x_axis).append("text")
+                        .attr("x", width-3)
+                        .attr("dy", "-.40em")
+                        .style("text-anchor", "end")
+                        .text('X value');
+
+                    plot.append('g')
+                        .attr('class', 'y axis')
+                        .call(y_axis)
+                        .append("text")
+                        .attr("transform", "rotate(-90)")
+                        .attr("y", 3)
+                        .attr("dy", ".71em")
+                        .style("text-anchor", "end")
+                        .text("Y value");
+
+                   plot.append('path').datum(points).attr('class', 'line').attr('d', line)
+                   .style('fill', 'none')
+                   .style('stroke', '#00f')
+                }
+                else {
+                    d3.select(this).select('path').style('fill', 'lime');
+                    $node.parentNode.removeChild($node);
+                }
             });
 
             var tocolor = "fill";
@@ -391,6 +455,39 @@
         }	
     </script>
             {##### PANEL BODY END #########}
+        </div>
+    </div>
+</div>
+<!-- selected node info -->
+<div class="container-fluid">
+    <div class="row" id="node_panels">
+        <style>
+        #node_panels {
+            font: 10px sans-serif;
+        }
+
+        .line {
+          fill: none;
+          stroke: yellow;
+          stroke-width: 2px;
+        }
+
+        .axis path,
+        .axis line {
+          fill: none;
+          stroke: #000;
+          shape-rendering: crispEdges;
+        }
+        </style>
+        <div class="col-lg-4 node_template">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    I do not 
+                </div>
+                <div class="panel-body">
+                    know how to hide this thing yet.
+                </div>
+            </div>
         </div>
     </div>
 </div>
