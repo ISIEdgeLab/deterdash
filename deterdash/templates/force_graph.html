@@ -151,70 +151,66 @@
             node.on('click', function(d) {
                 if (d3.event.defaultPrevented) return;
                 console.log('node ' + d.name + ' clicked');
-                var $node = document.getElementById(d.name+"_panel");
-                if ($node === null) {
+                var node = document.getElementById(d.name+"_panel");
+                if (node === null) {
                     d3.select(this).select('path').style('fill', 'red');
-                    var $node_panel = $template.clone();
-                    $node_panel.attr("id", d.name+"_panel"); 
-                    $node_panel.find(".panel-heading").text("Node: " + d.name);
-                    $node_panel.find(".panel-body").attr("id", d.name+"_panel_body");
-                    $node_panel.find(".panel-body").text("");
-                    $("#node_panels").append($node_panel.fadeIn());
+                    var panel = d3.select("#node_panels")
+                                        .append("div")
+                                            .attr("class", "col-lg-4 node_template")
+                                            .attr("id", d.name+"_panel")
+                                        .append("div")
+                                            .attr("class", "panel panel-default");
+
+                    panel.append("div").attr("class", "panel-heading").text("Node: " + d.name);
+
+                    var panel_body = panel.append("div")
+                                            .attr("class", "panel-body")
+                                            .attr("id", d.name + "_panel_body");
 
                     var margin = {top: 10, right: 10, bottom: 18, left: 23},
                         width = 300 - margin.left - margin.right,
                         height = 200 - margin.top - margin.bottom;
 
-                    var points = d3.range(10).map(function() { return { 
-                            x: Math.random() * 100, y: Math.random() * 100}});
+                    var context = cubism.context().step(1000).size(width);
+                    var horizon = context.horizon().height(height).extent([-10, 10]);
 
-                    points = points.sort(function(a, b) { return d3.descending(a.x, b.x); });            
+                    function get_node_data(name) {
+                        var value = 0, values = [], i = Math.random() * 10, last;
+                        return context.metric(function(start, stop, step, callback) {
+                            start = +start, stop = +stop;
+                            if (isNaN(last)) last = start;
+                            while (last < stop) {
+                              last += step;
+                              value = Math.max(-10, 
+                                        Math.min(10,
+                                            value + .8 * Math.random() - .4 + .2 * Math.cos(i += 1 * .02)));
+                              values.push(value);
+                            }
+                            callback(null, values = values.slice((start - stop) / step));
+                          }, d);
+                     }
 
-                    var x = d3.scale.linear().range([0, width]),
-                        y = d3.scale.linear().range([height, 0]);
+                    horizon.metric(get_node_data);
 
-                    var x_axis = d3.svg.axis().scale(x).orient('bottom');
-                    var y_axis = d3.svg.axis().scale(y).orient('left');
-                    var line = d3.svg.line()
-                                .x(function(d) { return x(d.x); })
-                                .y(function(d) { return y(d.y); })
-                                .interpolate("basis");
+                    d3.select("#"+d.name+"_panel_body").selectAll(".horizon")
+                            .data([d.name])
+                            .enter()
+                            .append("div")
+                            .attr("class", "horizon")
+                            .call(horizon);
 
-                    var plot = d3.select("#"+d.name+"_panel_body").append('svg')
-                                .attr("height", height + margin.top + margin.bottom)
-                                .style('font', '10px')
-                                 .append('g')
-                                 .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+                    d3.select("#"+d.name+"_panel_body").append("div")
+                        .attr("class", "rule")
+                        .call(context.rule());
 
-                    x.domain(d3.extent(points, function(d) { return d.x; }));
-                    y.domain(d3.extent(points, function(d) { return d.y; }));
-
-                    plot.append('g')
-                        .attr('class', 'x axis')
-                        .attr("transform", "translate(0," + height + ")")
-                        .call(x_axis).append("text")
-                        .attr("x", width-3)
-                        .attr("dy", "-.40em")
-                        .style("text-anchor", "end")
-                        .text('X value');
-
-                    plot.append('g')
-                        .attr('class', 'y axis')
-                        .call(y_axis)
-                        .append("text")
-                        .attr("transform", "rotate(-90)")
-                        .attr("y", 3)
-                        .attr("dy", ".71em")
-                        .style("text-anchor", "end")
-                        .text("Y value");
-
-                   plot.append('path').datum(points).attr('class', 'line').attr('d', line)
-                   .style('fill', 'none')
-                   .style('stroke', '#00f')
+                    var axis = context.axis();
+                    d3.select("#"+d.name+"_panel_body").append("div")
+                        .attr("class", "axis")
+                        .append("g").call(axis);
                 }
                 else {
                     d3.select(this).select('path').style('fill', 'lime');
-                    $node.parentNode.removeChild($node);
+                    node.parentNode.removeChild(node);
                 }
             });
 
@@ -462,33 +458,8 @@
 <div class="container-fluid">
     <div class="row" id="node_panels">
         <style>
-        #node_panels {
-            font: 10px sans-serif;
-        }
-
-        .line {
-          fill: none;
-          stroke: yellow;
-          stroke-width: 2px;
-        }
-
-        .axis path,
-        .axis line {
-          fill: none;
-          stroke: #000;
-          shape-rendering: crispEdges;
-        }
+        // @import url(http://square.github.io/cubism/style.css);
         </style>
-        <div class="col-lg-4 node_template">
-            <div class="panel panel-default">
-                <div class="panel-heading">
-                    I do not 
-                </div>
-                <div class="panel-body">
-                    know how to hide this thing yet.
-                </div>
-            </div>
-        </div>
     </div>
 </div>
 {% endblock %}
