@@ -85,8 +85,3 @@ blockquote:after {
   right: 0;
 }
 
-.line {
-  background: #000;
-  opacity: .2;
-  z-index: 2;
-}
