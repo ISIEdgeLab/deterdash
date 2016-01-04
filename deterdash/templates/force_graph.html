@@ -167,8 +167,8 @@
                                             .attr("class", "panel-body")
                                             .attr("id", d.name + "_panel_body");
 
-                    var margin = {top: 10, right: 10, bottom: 18, left: 23},
-                        width = 300 - margin.left - margin.right,
+                    var margin = {top: 10, right: 10, bottom: 10, left: 23},
+                        width = 300,
                         height = 200 - margin.top - margin.bottom;
 
                     var context = cubism.context().step(1000).size(width);
@@ -457,9 +457,7 @@
 <!-- selected node info -->
 <div class="container-fluid">
     <div class="row" id="node_panels">
-        <style>
-        // @import url(http://square.github.io/cubism/style.css);
-        </style>
+       <link type="text/css" rel="stylesheet" href="{{ url_for('static', filename='css/horizon_chart.css') }}"></link>
     </div>
 </div>
 {% endblock %}
