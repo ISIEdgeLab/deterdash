@@ -4,7 +4,7 @@ from flask import render_template, jsonify, request
 
 from . import app
 from .topology import get_nodes, get_topology
-from .viz_data import get_viz_ui_types, get_viz_agents, get_viz_agent
+from .viz_data import get_viz_ui_types, get_viz_agents, get_viz_agent, get_node_viztypes
 from .viz_data import get_viz_agent_nodes
 from .exp_info import get_exp_info
 
@@ -93,6 +93,17 @@ def http_client_request(data_source):
         return jsonify(status=1, counts=[], max_extent=0)
 
     return jsonify(status=0, counts=data, max_extent=max(data))
+
+@app.route('/api/<node>/viztypes')
+def node_viztypes(node):
+    '''Return (in JSON) all things visual for the given node.'''
+    # db.experiment_data.find({agent: "viz_data", host: 'crypto1'})
+    nvt = get_node_viztypes(node)
+    if not nvt:
+        return jsonify(status=1)
+
+    return jsonify(status=0, types=nvt)
+
 
 #
 # context processors. this probably should go elsewhere as they are not views.
