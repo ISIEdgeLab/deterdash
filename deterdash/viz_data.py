@@ -93,3 +93,25 @@ def get_viz_agents(datatype):
             seen.append(doc['table'])
 
     return agents
+
+def get_node_viztypes(node):
+    # db.experiment_data.find({agent: "viz_data", host: 'crypto1'})
+    db = magi_db()
+    finded = db.experiment_data.find(
+        {'agent': 'viz_data', 'host': node})
+
+    if not finded:
+        return None
+
+    # "schema": 
+    types = []
+    for row in finded:
+        if row['datatype'] == 'horizon_chart':
+            for unit in row['units']:
+                # type not needed yet, but will be.
+                types.append({'units': unit, 'type': row['datatype']})  
+
+    if not types:
+        return None
+
+    return types
