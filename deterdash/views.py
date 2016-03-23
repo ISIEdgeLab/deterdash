@@ -5,6 +5,7 @@ from flask import render_template, jsonify, request
 from . import app
 from .topology import get_nodes, get_topology
 from .viz_data import get_viz_ui_types, get_viz_agents, get_viz_agent, get_node_viztypes
+from .viz_data import get_node_agents
 from .viz_data import get_viz_agent_nodes
 from .exp_info import get_exp_info
 
@@ -104,7 +105,13 @@ def node_viztypes(node):
 
     return jsonify(status=0, types=nvt)
 
+@app.route('/api/<node>/agents')
+def node_agents(node):
+    agents = get_node_agents(node)
+    if not agents:
+        return jsonify(status=1)
 
+    return jsonify(status=0, agents=agents)
 #
 # context processors. this probably should go elsewhere as they are not views.
 #
