@@ -68,7 +68,6 @@
                 $("#deter_topology_chart_title").html(
                         "<b> Experiment: " + json['project'] + "/" + json['experiment']);
                 exp_info = json;
-                load_topology();
         });
 
         d3.json(window.location.origin + '/api/topology', function(error, json) {
@@ -152,7 +151,7 @@
                 var node = document.getElementById(d.name+"_panel");
                 if (node === null) {
                     d3.select(this).select('path').style('fill', 'red');
-                    var panel = deterdash.node_stats_panel(d3, "#node_panels", d); 
+                    var panel = deterdash.node_stats_panel(d3, "#node_panels", d.name); 
                 }
                 else {
                     d3.select(this).select('path').style('fill', 'lime');
