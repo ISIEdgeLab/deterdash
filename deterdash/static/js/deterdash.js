@@ -10,7 +10,7 @@ console.log('deterdash loaded.');
     window.deterdash = deterdash;    // GTL this seems wrong.
 
     deterdash.spawn_horizon_graph = function(divid, nodename, agent, unit) {
-        console.log('spawn_horizon_graph(' + divid + ',' + nodename + ') called');
+        console.log('spawn_horizon_graph called with: ', divid, nodename, agent, unit); 
 
         var margin = {top: 10, right: 10, bottom: 10, left: 23},
             width = 300,
@@ -20,6 +20,8 @@ console.log('deterdash loaded.');
         var horizon = context.horizon().height(height); 
 
         horizon.metric(get_node_data);
+
+        d3.select("#" + divid).selectAll('.horizon').remove();
 
         d3.select("#" + divid)
                 .selectAll(".horizon")
@@ -38,20 +40,33 @@ console.log('deterdash loaded.');
     
         function get_node_data(nodename) {
             console.log('getting data for nodename ' + nodename);
-            var value = 0, values = [], i = Math.random() * 10, last;
             return context.metric(function(start, stop, step, callback) {
-                start = +start, stop = +stop;
-                if (isNaN(last)) last = start;
-                while (last < stop) {
-                  last += step;
-                  value = Math.max(-10, Math.min(10, value + .8 * Math.random() - .4 + .2 * Math.cos(i += 1 * .02)));
-                  values.push(value);
-                }
-                values = values.slice((start-stop)/step);
-                callback(null, values); 
-              }, nodename);
+                var values = [];
+                var start = +start, stop = +stop;
+                var url = window.location.origin + "/api/horizon_chart/json?";
+                url += 'start=' + (start / 1000);
+                url += '&stop=' + (stop / 1000);
+                url += '&step=' + (step / 1000);
+                url += '&node=' + nodename;
+                url += '&metric=' + unit.data_key;
+                url += '&agent=' + agent.agent;
+                console.log('api url: ' + url);
+                d3.json(url, function(error, json) {
+                    if (error) { 
+                        console.log('error', error);
+                        callback(error, []);
+                    }
+                    else if (! 'counts' in json) {
+                        callback('bad json data: ' + json, []);
+                    }
+                    else {
+                        values = json['counts'];
+                        callback(null, values);
+                    }
+                });
+            }, nodename);
         }
-    }
+    } // end of deterdash.spawn_horizon_graph
 
     deterdash.node_stats_panel = function(d3, divid, nodename) {
         console.log('node_stats_panel called for ' + nodename);
