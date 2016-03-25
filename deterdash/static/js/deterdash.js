@@ -21,7 +21,7 @@ console.log('deterdash loaded.');
 
         horizon.metric(get_node_data);
 
-        d3.select("#" + divid).selectAll('.horizon').remove();
+        d3.select("#" + divid).selectAll('.horizon').call(horizon.remove).remove();
 
         d3.select("#" + divid)
                 .selectAll(".horizon")
@@ -50,7 +50,7 @@ console.log('deterdash loaded.');
                 url += '&node=' + nodename;
                 url += '&metric=' + unit.data_key;
                 url += '&agent=' + agent.agent;
-                console.log('api url: ' + url);
+                // console.log('api url: ' + url);
                 d3.json(url, function(error, json) {
                     if (error) { 
                         console.log('error', error);

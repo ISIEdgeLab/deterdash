@@ -179,6 +179,7 @@
                     var panel = deterdash.node_stats_panel(d3, "#node_panels", d.name); 
                 }
                 else {
+                    // GTL - we need to get access to the panel and tell it to clear/remove itself here!
                     d3.select(this).select('path').style('fill', 'lime');
                     node.parentNode.removeChild(node);
                 }
