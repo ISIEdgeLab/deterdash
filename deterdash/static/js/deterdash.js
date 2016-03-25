@@ -9,13 +9,49 @@ console.log('deterdash loaded.');
     var deterdash = window.deterdash || {};
     window.deterdash = deterdash;    // GTL this seems wrong.
 
-    var margin = {top: 10, right: 10, bottom: 10, left: 23},
-        width = 300,
-        height = 200 - margin.top - margin.bottom;
+    deterdash.spawn_horizon_graph = function(divid, nodename, agent, unit) {
+        console.log('spawn_horizon_graph(' + divid + ',' + nodename + ') called');
 
-    var context = cubism.context().step(1000).size(width);
-    var horizon = context.horizon().height(height); 
+        var margin = {top: 10, right: 10, bottom: 10, left: 23},
+            width = 300,
+            height = 200 - margin.top - margin.bottom;
 
+        var context = cubism.context().step(1000).size(width);
+        var horizon = context.horizon().height(height); 
+
+        horizon.metric(get_node_data);
+
+        d3.select("#" + divid)
+                .selectAll(".horizon")
+                .data([nodename])
+                .enter()
+                .append("div")
+                .attr("class", "horizon")
+                .call(horizon);
+
+        d3.select("#" + divid).selectAll('.axis').remove();
+
+        d3.select("#" + divid)
+            .append("div")
+            .attr("class", "axis")
+            .call(context.axis());
+    
+        function get_node_data(nodename) {
+            console.log('getting data for nodename ' + nodename);
+            var value = 0, values = [], i = Math.random() * 10, last;
+            return context.metric(function(start, stop, step, callback) {
+                start = +start, stop = +stop;
+                if (isNaN(last)) last = start;
+                while (last < stop) {
+                  last += step;
+                  value = Math.max(-10, Math.min(10, value + .8 * Math.random() - .4 + .2 * Math.cos(i += 1 * .02)));
+                  values.push(value);
+                }
+                values = values.slice((start-stop)/step);
+                callback(null, values); 
+              }, nodename);
+        }
+    }
 
     deterdash.node_stats_panel = function(d3, divid, nodename) {
         console.log('node_stats_panel called for ' + nodename);
@@ -29,9 +65,10 @@ console.log('deterdash loaded.');
                                 .attr("class", "panel panel-default");
 
         var panel_header = panel.append("div").attr("class", "panel-heading")
+        var panel_body_id = nodename + "_panel_body";
         var panel_body = panel.append("div")
                                 .attr("class", "panel-body")
-                                .attr("id", nodename + "_panel_body");
+                                .attr("id", panel_body_id);
         var panel_footer = panel.append("div").attr("class", "panel-footer")
                                 .attr("id", nodename+"_panel_footer");
 
@@ -42,9 +79,8 @@ console.log('deterdash loaded.');
         }
 
         function unit_change(agent, unit) {
-            panel_body.text('Graph for "' + agent.display + ' - ' + unit.display + 
-                            '" will go here.'); 
             set_footer(agent, unit); 
+            var graph = deterdash.spawn_horizon_graph(panel_body_id, nodename, agent, unit); 
         }
 
         function build_panel_header(header, nodename) {
@@ -80,15 +116,21 @@ console.log('deterdash loaded.');
                 function(agents) {
                     // we have agents, so append the drop downs. The drop downs are multi-level
                     // menus, indexed by agent. Secondary drop downs are the agent's units.
+                    var def_unit_set = false;
                     for (var ai=0; ai<agents.length; ai++) {
+                        if (! agents[ai].hasOwnProperty('units')) {
+                            // This agent nothing to plot/graph.
+                            continue;
+                        }
                         var agent_menu = dropdown.append("li").attr("class", "dropdown-submenu");
                         agent_menu.append("a").attr("href", "#").text(agents[ai].display);
 
                         var units_menu = agent_menu.append("ul").attr("class", "dropdown-menu");
                         for (var ui=0; ui<agents[ai].units.length; ui++) {
                             // use first agent and first unit as the default display.
-                            if (ai === 0 && ui === 0) {
-                                unit_change(agents[0], agents[0].units[0]);
+                            if (!def_unit_set) {
+                                unit_change(agents[ai], agents[ai].units[ui]);
+                                def_unit_set = true;
                             }
                             units_menu.append("li").append("a").attr("href", "#")
                                        .text(agents[ai].units[ui].display)
@@ -102,6 +144,9 @@ console.log('deterdash loaded.');
                                         );
                         }
                     }
+                },
+                function(error) {
+                    console.log('Error getting agent/unit info: ', error)
                 }
             ).catch(
                 function(reason) {
@@ -110,23 +155,6 @@ console.log('deterdash loaded.');
             );
         }
 
-        // horizon.metric(get_node_data);
-
-        // d3.select("#"+nodename+"_panel_body").selectAll(".horizon")
-        //         .data([nodename])
-        //         .enter()
-        //         .append("div")
-        //         .attr("class", "horizon")
-        //         .call(horizon);
-
-        // d3.select("#"+nodename+"_panel_body").append("div")
-        //     .attr("class", "rule")
-        //     .call(context.rule());
-
-        // var axis = context.axis();
-        // d3.select("#"+nodename+"_panel_body").append("div")
-        //     .attr("class", "axis")
-        //     .append("g").call(axis);
     }
 
     return deterdash;
