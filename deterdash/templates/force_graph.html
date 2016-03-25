@@ -63,19 +63,44 @@
         var g = svg.append("g");
         svg.style("cursor","move");
 
-        d3.json(window.location.origin + '/api/exp_info', function(error, json) {
-                if(error) return console.log('get exp info error', error);
-                $("#deter_topology_chart_title").html(
-                        "<b> Experiment: " + json['project'] + "/" + json['experiment']);
-                exp_info = json;
-        });
+        var exp_name_promise = new Promise(
+            function(resolve, reject) {
+                d3.json(window.location.origin + '/api/exp_info',
+                    function(error, json) {
+                        if(error) reject(error); 
+                        else if (json.status !== 0) {
+                            // This can happen if the correct agent is not running.
+                            reject('server did not give us the exp info.');
+                        }
+                        else {
+                            console.log("got exp_info: ", json); 
+                            resolve(json);
+                        }
+                    }
+                );
+            }
+        ).then(
+            function(expinfo) {
+                $("#deter_topology_chart_title").html("Experiment: <b>" + expinfo.project + " / "
+                                                                        + expinfo.experiment + "</b>"); 
+            }, 
+            function(message, error) {
+                $("#deter_topology_chart_title").html("Topology"); 
+                console.log(message, error);
+            }
+        );
 
-        d3.json(window.location.origin + '/api/topology', function(error, json) {
-            if(error) return console.log('get topo error', error);
-
-            console.log('nodes', json['nodes'])
-            console.log('edges', json['edges'])
-
+        var load_topology_promise = new Promise(
+            function(resolve, reject) {
+                d3.json(window.location.origin + '/api/topology',
+                    function(error, json) {
+                        if (error) reject(error);
+                        else if (json.status !== 0) reject("server did not give the topology");
+                        else resolve(json)
+                    }
+                );
+            }
+        ).then(function load_topology(json) {
             // build the nodes and links teh way the graph widget wants them
             nodes = [];
             links = [];
@@ -360,7 +385,10 @@
                     }
                 }	
             }
-        });
+        },  // end of then(function(...) {
+        function(error) {
+            console.log("error loading topology: ", error)
+        }); 
 
         function vis_by_type(type) {
             switch (type) {
