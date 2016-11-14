@@ -1,3 +1,4 @@
 *.pyc
 tags
 *.swp
+lib/libdeterdash/build/
