@@ -87,16 +87,9 @@ console.log('deterdash loaded.');
         var panel_footer = panel.append("div").attr("class", "panel-footer")
                                 .attr("id", nodename+"_panel_footer");
 
+        panel_footer.text(agent.display + ' route table');
+
         build_panel_header(panel_header, nodename);
-
-        function set_footer(agent, unit) {
-            panel_footer.text(agent.display + ' - ' + unit.display);
-        }
-
-        function unit_change(agent, unit) {
-            set_footer(agent, unit); 
-            var graph = deterdash.spawn_horizon_graph(panel_body_id, nodename, agent, unit); 
-        }
 
         function build_panel_header(header, nodename) {
             // header.append("i").attr("class", "fa fa-bar-chart-o fa-fw");
@@ -170,6 +163,79 @@ console.log('deterdash loaded.');
             );
         }
 
+    }
+
+    deterdash.node_table_panel = function(d3, divid, nodename, tablename) {
+        console.log('node_table_panel called for ' + nodename + ' tablename: ' + tablename);
+
+        // "private" variables protected by the closure of this function.
+        var panel = d3.select(divid)
+                            .append("div")
+                                .attr("class", "col-lg-4 node_template")
+                                .attr("id", nodename+"_panel")
+                            .append("div")
+                                .attr("class", "panel panel-default");
+
+        var panel_header = panel.append("div").attr("class", "panel-heading")
+        var panel_body_id = nodename + "_" + tablename + "_table";
+        var panel_body = panel.append("div").attr("class", "panel-body");
+        var panel_footer = panel.append("div").attr("class", "panel-footer")
+                                .attr("id", nodename+"_panel_footer");
+
+        panel_header.append("b").text("Node: " + nodename);
+
+        var table_promise = new Promise(
+            function(resolve, reject) {
+                d3.json(window.location.origin + '/api/' + tablename + '/' + nodename, 
+                    function(error, json) {
+                        if (error) {
+                           reject('error getting table data for ' + nodename);
+                           return;
+                        }
+                        if (json.status != 0) {
+                            reject('bad response from server when reading table data');
+                            panel_body.html('No table data found.');
+                            return;
+                        }
+                        console.log('got table data for ' + nodename);
+                        console.log('data: ', json.table);
+                        resolve(json.table);
+                    }
+                );
+            }
+        );
+
+        table_promise.then(
+            function(table_data) {
+                console.log('resolving table of ' + table_data.length + ' rows');
+                var table = panel_body.append("table")
+                                        .attr("class", "table table-striped table-condensed");
+                var theader = table.append("thead");
+                var tbody = table.append("tbody");
+
+                // add headers to the table.
+                var cols = [];
+                var tr = theader.append("tr");
+                for (var key in table_data[0]) {
+                    cols.push(key);
+                    tr.append("td").append("b").html(key)
+                }
+                // for each row add the row's data to the column.
+                for (var row in table_data) {
+                    var trow = tbody.append("tr");
+                    for (var col in cols) {
+                        trow.append("td").html(table_data[row][cols[col]]); 
+                    }
+                }
+            },
+            function(error) {
+                console.log('Error getting table data: ', error)
+            }
+        ).catch(
+            function(reason) {
+                console.log('Error getting ' + tablename + ' table data for ' + nodename + ': ' + reason);
+            }
+        );
     }
 
     return deterdash;
