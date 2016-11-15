@@ -53,7 +53,7 @@ def load_default_viz_ui_types():
 
     # now add the locally supported graph instance, "topology"
     dashboard = DeterDashboard()
-    dashboard.add_topology('Topology', 'topo_agent', 'host', 'edges')
+    dashboard.add_topology('Topology', 'topo_agent', 'nodes', 'edges')
 
 
 def get_viz_ui_types():
@@ -139,9 +139,8 @@ def get_node_agents(node):
 
         agents.append(agent)
 
-    if not agent:
+    if not agents:
         return None
 
     return agents
-
 

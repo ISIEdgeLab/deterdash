@@ -3,7 +3,8 @@ from datetime import datetime
 from flask import render_template, jsonify, request
 
 from . import app
-from .topology import get_nodes, get_topology
+from .topology import get_topology
+from .routing import get_route_tables, get_route_path
 from .viz_data import get_viz_ui_types, get_viz_agents, get_viz_agent, get_node_viztypes
 from .viz_data import get_node_agents
 from .viz_data import get_viz_agent_nodes
@@ -44,6 +45,18 @@ def show_viz(endpoint, agentname):
     return render_template('blank.html')
 
 #
+# a path just for graphs is not good. 
+#
+@app.route('/viz/graphs/<agent>')
+def show_routes(agent):
+    log.debug('looking for graph for agent {}'.format(agent))
+    agent = get_viz_agent('force_directed_graph', agent)
+    if not agent:
+        return jsonify(status=1, error='Unable to that agent associated with any graph.')
+
+    return render_template(agent['template'], agent=agent)
+
+#
 # api paths.
 #
 @app.route('/api/<datatype>/<agentname>/nodes')
@@ -52,9 +65,12 @@ def agent_nodes(datatype, agentname):
     nodes = get_viz_agent_nodes(datatype, agentname)
     return jsonify(status=0, nodes=nodes)
 
-@app.route('/api/topology')
-def topology():
-    nodes, edges = get_topology()
+@app.route('/api/topology/<agentname>')
+def topology(agentname):
+    nodes, edges = get_topology(agentname)
+    if not nodes:
+        return jsonify(status=1, error='topology not found for agent {}'.format(agentname))
+
     return jsonify(status=0, nodes=nodes, edges=edges)
 
 @app.route('/api/exp_info')
@@ -64,6 +80,31 @@ def exp_info():
         return jsonify(status=1)
     
     return jsonify(ei, status=0)
+
+@app.route('/api/routing/<node>')
+def get_routing(node):
+    #p2p = request.args.get('p2p')
+    #table_type = 'p2p' if p2p else 'routes'
+    #table = get_route_tables(node, table_type)
+    table = get_route_tables(node, 'routes')
+    if not table:
+        return jsonify(status=1, error='routing not found. Is the agent running?')
+
+    return jsonify(status=0, table=table)
+
+@app.route('/api/routing/path')
+def api_routing_path():
+    try:
+        node_a = request.args.get('src')
+        node_b = request.args.get('dst')
+    except ValueError:
+        return jsonify(status=1, error='You must give two nodes: via ?src=node&dst=node')
+
+    complete, path = get_route_path(node_a, node_b)
+    if not path:
+        return jsonify(status=1, error='Unable to find path from {} to {}.'.format(node_a, node_b))
+
+    return jsonify(status=0, path=path, complete=complete)
 
 @app.route('/api/<data_source>/json', methods=['get'])
 def http_client_request(data_source):
@@ -75,7 +116,7 @@ def http_client_request(data_source):
         node = str(request.args.get('node'))
         metric = str(request.args.get('metric'))
         agent = str(request.args.get('agent'))
-    except valueerror:
+    except ValueError:
         return jsonify(status=1, error='badly formatted url attributes.')
 
     # log.debug('{}: {} - {}/{}/{}'.format(
