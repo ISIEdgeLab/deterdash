@@ -10,7 +10,7 @@ from .viz_data import get_node_agents
 from .viz_data import get_viz_agent_nodes
 from .exp_info import get_exp_info
 
-from .horizon_chart import get_viz_horz_data
+from .time_plots import get_viz_time_plot_data
 
 log = logging.getLogger(__name__)
 
@@ -61,8 +61,11 @@ def show_routes(agent):
 #
 @app.route('/api/<datatype>/<agentname>/nodes')
 def agent_nodes(datatype, agentname):
-    log.debug('Lookging for nodes for {}'.format(agentname))
+    log.debug('Looking for nodes for {}'.format(agentname))
     nodes = get_viz_agent_nodes(datatype, agentname)
+    if not nodes:
+        return jsonify(status=1, error='data not found')
+
     return jsonify(status=0, nodes=nodes)
 
 @app.route('/api/topology/<agentname>')
@@ -83,9 +86,6 @@ def exp_info():
 
 @app.route('/api/routing/<node>')
 def get_routing(node):
-    #p2p = request.args.get('p2p')
-    #table_type = 'p2p' if p2p else 'routes'
-    #table = get_route_tables(node, table_type)
     table = get_route_tables(node, 'routes')
     if not table:
         return jsonify(status=1, error='routing not found. Is the agent running?')
@@ -108,33 +108,28 @@ def api_routing_path():
 
 @app.route('/api/<data_source>/json', methods=['get'])
 def http_client_request(data_source):
-    # input should probably be sanitised here. :)
     try:
-        start = int(request.args.get('start'))
-        stop = int(request.args.get('stop'))
-        step = int(request.args.get('step'))
-        node = str(request.args.get('node'))
-        metric = str(request.args.get('metric'))
-        agent = str(request.args.get('agent'))
+        start = request.args.get('start', type=int)
+        stop = request.args.get('stop', type=int)
+        step = request.args.get('step', default=1000, type=int)
+        metric = request.args.get('metric', type=str)
+        agent = request.args.get('agent', type=str)
+        node = request.args.get('node', default=None, type=str)
     except ValueError:
-        return jsonify(status=1, error='badly formatted url attributes.')
+        return jsonify(status=1, error="Badly formatted URL.") 
+   
+    if data_source == 'time_plot':
+        if not node:
+            node = get_viz_agent_nodes('time_plot', agent)
 
-    # log.debug('{}: {} - {}/{}/{}'.format(
-    #     metric,
-    #     node,
-    #     datetime.fromtimestamp(start).strftime('%h:%m:%s'),
-    #     datetime.fromtimestamp(stop).strftime('%h:%m:%s'),
-    #     step))
-    
-    if data_source == 'horizon_chart':
-        data = get_viz_horz_data(start, stop, step, node, metric, agent)
+        data = get_viz_time_plot_data(start, stop, step, node, metric, agent)
     else:
         data = None
 
     if not data:
-        return jsonify(status=1, counts=[], max_extent=0)
+        return jsonify(status=1, data=None)
 
-    return jsonify(status=0, counts=data, max_extent=max(data))
+    return jsonify(status=0, data=data)
 
 @app.route('/api/<node>/viztypes')
 def node_viztypes(node):

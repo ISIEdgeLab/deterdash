@@ -19,13 +19,27 @@ def _get_random_data(start, stop, step, node):
     for t in xrange(start, stop, step):
         if t not in random_data[node]:
             # GTL need to trim the random_data at some point.
-            random_data[node][t] = random.normalvariate(100, 20)
+            random_data[node][t] = random.normalvariate(50, 5)
 
         data.append(random_data[node][t])
 
-    return data
+    return {'node': node, 'values': data}
 
-def get_viz_horz_data(start, stop, step, node, metric, agent):
+def get_viz_time_plot_data(start, stop, step, node, metric, agent):
+    log.debug('reading time plot data: {}->{}/{} for {}/{}/{}'.format(
+        start, stop, step, node, metric, agent))
+
+    if isinstance(node, list):
+        values = []
+        for n in node:
+            data = get_viz_time_plot_data_node(start, stop, step, n, metric, agent)
+            values.append({'node': n, 'values': data['values']})
+
+        return sorted(values, key=lambda v: v['node'])
+    
+    return get_viz_time_plot_data_node(start, stop, step, node, metric, agent)
+
+def get_viz_time_plot_data_node(start, stop, step, node, metric, agent):
 
     if metric == 'random':
         return _get_random_data(start, stop, step, node)
@@ -34,7 +48,7 @@ def get_viz_horz_data(start, stop, step, node, metric, agent):
     # find the correct table, column, and data entry to query.
     viz_data_entry = db.experiment_data.find_one({
         'agent': 'viz_data',
-        'datatype': 'horizon_chart', # hardcoded for this datatype
+        'datatype': 'time_plot',
         'table': agent,
         'units': {'$elemMatch': {'data_key': metric}}
     })
@@ -75,9 +89,4 @@ def get_viz_horz_data(start, stop, step, node, metric, agent):
         #         data.append(0.0)
 
         #     i += step
-
-    # GTL debugging - remove
-    if node in ['enclave1', 'traf11']:
-        log.debug('{} counts: {}'.format(node, data.values()))
-
-    return data.values()
+    return {'node': node, 'values': data.values()}

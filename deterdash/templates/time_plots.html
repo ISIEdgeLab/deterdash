@@ -13,18 +13,6 @@
             </span>
             <div class="pull-right">
                 <span>
-                    {#############
-                    <div class="btn-group btn-grp-tooltip">
-                        <button type="button" id="horizon_chart_more_height" class="btn btn-xs btn-default" data-toggle="toolip" title=""> + </button>
-                        <button type="button" id="horizon_chart_height" class="btn btn-xs btn-default" data-toggle="toolip">Height</button>
-                        <button type="button" id="horizon_chart_less_height" class="btn btn-xs btn-default" data-toggle="toolip" title=""> - </button>
-                    </div>
-                    <div class="btn-group btn-grp-tooltip">
-                        <button type="button" id="horizon_chart_more_extent" class="btn btn-xs btn-default" data-toggle="tooltip"> + </button>
-                        <button type="button" id="horizon_chart_extent" class="btn btn-xs btn-default" data-toggle="tooltip" title="Set based on data">Extent</button>
-                        <button type="button" id="horizon_chart_less_extent" class="btn btn-xs btn-default" data-toggle="tooltip"> - </button>
-                    </div>
-                    ###############}
                     <div class="btn-group">
                         <button type="button" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown">
                             Chart Units
@@ -36,7 +24,6 @@
                                 <a href="#" id="units_{{ unit.data_key }}">{{ unit.display|title }}</a>
                             </li>
                             {% endfor %}
-                            {# GTL test horizon chart with out DB access #}
                             <li>
                                 <a href="#" id="units_random">Random</a>
                             </li>
@@ -48,8 +35,8 @@
                             <span class="caret"></span>
                         </button>
                         <ul class="dropdown-menu pull-right" role="menu">
-                            <li><a href="#" class="horizon_chart_sort_name_ascend">Node Name Ascending</a> </li>
-                            <li><a href="#" class="horizon_chart_sort_name_descend">Node Name Descending</a> </li>
+                            <li><a href="#" class="time_plot_sort_name_ascend">Node Name Ascending</a> </li>
+                            <li><a href="#" class="time_plot_sort_name_descend">Node Name Descending</a> </li>
                         </ul>
                     </div>
                 </span>
@@ -58,199 +45,15 @@
         <!-- /.panel-heading -->
         <!-- /.panel-body -->
         <div class="panel-body">
-            <link type="text/css" rel="stylesheet" href="{{ url_for('static', filename='css/horizon_chart.css') }}"></link>
-            <div class="panel-body" id="horizon_charts_id">
+            <div class="panel-body" id="time_plots_id"></div> 
             <script type="text/javascript">
-
-                var context = cubism.context()
-                                    .serverDelay(10 * 1000)
-                                    .step(1000) // one second per step
-                                    .size($("#horizon_charts_id").width()-30);
-                var nodes = [];
-                var chart_units = "{{ agent.units[0].data_key }}";  {## first unit is default ##}
-                var max_extent = 100;   // will get overwritten with new data.
-                var set_extent = false;
-                var agent = "{{ agent.table }}";
-                var height = 120;
-                var horizon = context.horizon().height(height)
-
-                $(document).ready(function() {
-                    $('[data-toggle="tooltip"]').tooltip({'placement': 'top'});
-                    build_horizons();
-                });
-
-                $("body").tooltip({ selector: '[data-toggle="tooltip"]' });
-               
-                context.on("focus", function(i) {
-                    d3.selectAll(".value")
-                        .style( "right", i == null ? null : context.size() - i + "px");
-                });
-
-                function build_horizons() {
-                    url = "/api/horizon_chart/{{ agent.table }}/nodes";
-                    d3.json(window.location.origin + url, function(error, json) {
-                        if (error) {
-                            return console.log('nodes error', error);
-                        }
-                        console.log('got nodes msg', json);
-                        nodes = json['nodes'];
-                        nodes.sort();
-
-                        d3.select("#horizon_charts_id").selectAll(".axis")
-                            .data(["top", "bottom"])
-                          .enter().append("div")
-                            .attr("class", function(d) { return d + " axis"; })
-                            .each(function(d) { d3.select(this).call(context.axis().orient(d)); });
-                       
-                        horizon.metric(get_data)
-
-                        hs = d3.select("#horizon_charts_id").selectAll(".horizon")
-                                    .data(nodes)
-
-                        hs.enter().insert("div", ".bottom")
-                                  .attr("class", "horizon")
-                                  .call(horizon)
-
-                        hs.exit().remove()
-                    })
-                }
-              
-                {# create per unit drop down menu handler #}
-                {% for unit in agent.units %}
-                    $("#units_{{ unit.data_key }}").click(function(event) {
-                        chart_units = "{{ unit.data_key }}";
-                        $("#chart_title").html("<b> {{ unit.display|title }} {{ unit.units }}</b>");
-                        d3.select("#horizon_charts_id").selectAll("*").remove();
-                        max_extent = 100;
-                        build_horizons();
-                    });
-                {% endfor %}
-                {# GTL - testing. #}
-                $("#units_random").click(function(event) {
-                    chart_units = "random";
-                    $("#chart_title").html("<b> Random data around 100. </b>");
-                    d3.select("#horizon_charts_id").selectAll("*").remove();
-                    max_extent = 150;
-                    build_horizons();
-                });
-
-                $('.horizon_chart_sort_name_ascend').click(function(event) {
-                    nodes.sort();
-                    d3.select("#horizon_charts_id").selectAll(".axis").remove();
-                    d3.select("#horizon_charts_id").selectAll(".horizon").remove();
-                    build_horizons();
-                });
-
-                $('.horizon_chart_sort_name_descend').click(function(event) {
-                    nodes.sort();
-                    nodes.reverse();
-                    d3.select("#horizon_charts_id").selectAll(".axis").remove();
-                    d3.select("#horizon_charts_id").selectAll(".horizon").remove();
-                    build_horizons();
-                });
-
-                $('#horizon_chart_more_height').click(function(event) {
-                    console.log('more height clicked');
-                    height += (horz_height/2);
-                    set_height_tooltips();
-                    d3.select("#horizon_charts_id").selectAll(".axis").remove();
-                    d3.select("#horizon_charts_id").selectAll(".horizon").remove();
-                    build_horizons();
-                });
-
-                $('#horizon_chart_less_height').click(function(event) {
-                    if (horz_height > 15) {
-                        horz_height -= (horz_height/2);
-                        set_height_tooltips();
-                        d3.select("#horizon_charts_id").selectAll(".axis").remove();
-                        d3.select("#horizon_charts_id").selectAll(".horizon").remove();
-                        build_horizons();
-                    }
-                });
-
-                $('#horizon_chart_extent').click(function(event) {
-                        console.log('#horizon_chart_extent clicked')
-                        set_extent = true;
-                        d3.select("#horizon_charts_id").selectAll(".axis").remove();
-                        d3.select("#horizon_charts_id").selectAll(".horizon").remove();
-                        build_horizons();
-                });
-                $('#horizon_chart_more_extent').click(function(event) {
-                    max_extent += (max_extent/2);
-                    set_extent_tooltips();
-                    d3.select("#horizon_charts_id").selectAll(".axis").remove();
-                    d3.select("#horizon_charts_id").selectAll(".horizon").remove();
-                    build_horizons();
-                });
-
-                $('#horizon_chart_less_extent').click(function(event) {
-                    if (max_extent > 20) {
-                        max_extent -= (max_extent/2);
-                        set_extent_tooltips();
-                        d3.select("#horizon_charts_id").selectAll(".axis").remove();
-                        d3.select("#horizon_charts_id").selectAll(".horizon").remove();
-                        build_horizons();
-                    }
-                });
-
-                function set_height_tooltips() {
-                    document.getElementById("horizon_chart_more_height").setAttribute(
-                            "title", (horz_height + (horz_height/2)));
-                    document.getElementById("horizon_chart_height").setAttribute("Title", horz_height);
-                    document.getElementById("horizon_chart_less_height").setAttribute(
-                            "title", (horz_height - (horz_height/2)));
-                }
-
-                function set_extent_tooltips() {
-                    document.getElementById("horizon_chart_more_extent").setAttribute(
-                            "title", (max_extent + (max_extent/2)));
-                    document.getElementById("horizon_chart_less_extent").setAttribute(
-                            "title", (max_extent - (max_extent/2)));
-                }
-
-                function get_data(node) {
-                    return context.metric(function(start, stop, step, callback) {
-                        var values = [];
-                        start = +start, stop = +stop;
-                        url = window.location.origin + "/api/{{ agent.datatype }}/json?";
-                        url += 'start=' + (start / 1000);
-                        url += '&stop=' + (stop / 1000);
-                        url += '&step=' + (step / 1000);
-                        url += '&node=' + node;
-                        url += '&metric=' + chart_units;
-                        url += '&agent=' + agent;
-                        d3.json(url, function(error, json) {
-                            if (error) { 
-                                console.log('error', error);
-                                callback(error, []);
-                            }
-                            else if (! 'counts' in json) {
-                                callback('bad json data: ' + json, []);
-                            }
-                            else {
-                                values = json['counts'];
-                                if (set_extent) {
-                                    if (json['max_extent'] > max_extent) {
-                                        max_extent = json['max_extent'];
-                                        console.log('new max_extent: ' + max_extent);
-                                        set_extent = false;
-                                    }
-                                }
-                                // GTL DEBUG
-                                if (node == "enclave1" || node == "traf11") {
-                                    console.log(Math.floor(Date.now() / 1000) + ": " + node + 
-                                        " counts: ", values);
-                                }
-                                callback(null, values);
-                            }
-                        });
-                    }, node);
-                }
+                var time_plots = deterdash.spawn_time_plot(
+                        "time_plots_id",
+                        "{{ agent.units[0].data_key }}",
+                        "{{ agent.table }}",
+                        "{{ agent.datatype }}"); 
                 </script>
-            </div> <!-- /#horizon_charts_id -->
-        </div>
-        <div class="panel-footer">
-            <a href='https://square.github.io/cubism'> So what's all this then? </a>
+            </div> <!-- /#time_plots_id -->
         </div>
         <!-- /.panel-body -->
     </div>
