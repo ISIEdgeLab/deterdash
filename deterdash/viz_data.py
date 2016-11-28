@@ -10,7 +10,7 @@ log = logging.getLogger(__name__)
 def load_default_viz_ui_types():
     '''Load the standard supported graph types and instances. These only come from
     the deafult Magi-loaded agents. It also loads (creates) the offically supported
-    UI types (horizon_chart, etc).'''
+    UI types (time_plot, etc).'''
     # Horizon Chart API:
     #   data: nodes + datapoints over time.
     #   ui: display name. extent estimate.
@@ -21,11 +21,11 @@ def load_default_viz_ui_types():
     viz_ui_name = 'viz_ui'
     viz_types = [
         {
-            'datatype': DeterDashboard.horizon_chart_type,
+            'datatype': DeterDashboard.time_plot_type,
             'display': 'Time Plots',
             'icon': 'fa-clock-o',
             'endpoint': 'timeplots',
-            'implementation': 'horizon_chart.html'
+            'implementation': 'time_plots.html'
         },
         {
             'datatype': DeterDashboard.force_directed_graph_type,
@@ -64,15 +64,20 @@ def get_viz_ui_types():
 
 def get_viz_agent_nodes(datatype, agentname):
     db = magi_db()
-    node_key = db.experiment_data.find(
+    node_keys = db.experiment_data.find(
         {'agent': 'viz_data', 'datatype': datatype, 'table': agentname}).distinct('node_key')
+
+    if not len(node_keys):
+        return None
+
     # assuming one node is is a bad thing.
-    nodes = db.experiment_data.find({'agent': agentname}).distinct(node_key[0])
+    nodes = db.experiment_data.find({'agent': agentname}).distinct(node_keys[0])
+    nodes.sort()
     return nodes
 
 
 def get_viz_agent(datatype, agentname):
-    '''Get a specific agent. e.g. the pkt_count agent's data for horizon charts.'''
+    '''Get a specific agent. e.g. the pkt_count agent's data for time plot.'''
     db = magi_db()
     cursor = db.experiment_data.find(
         {'agent': 'viz_data', 'datatype': datatype, 'table': agentname}).sort([('created', 1)])
@@ -106,7 +111,7 @@ def get_node_viztypes(node):
     # "schema": 
     types = []
     for row in finded:
-        if row['datatype'] == 'horizon_chart':
+        if row['datatype'] == 'time_plot':
             for unit in row['units']:
                 # type not needed yet, but will be.
                 types.append(

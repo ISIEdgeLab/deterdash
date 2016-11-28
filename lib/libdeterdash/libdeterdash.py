@@ -21,13 +21,13 @@ class DeterDashboard(object):
     viz_data_table = 'viz_data'
 
     # The supported datatypes
-    horizon_chart_type = 'horizon_chart'
+    time_plot_type = 'time_plot'
     force_directed_graph_type = 'force_directed_graph'
 
     def __init__(self):
         pass
 
-    def add_horizon_chart(self, display, table, node_key, units):
+    def add_time_plot(self, display, table, node_key, units):
         # sanity check the units.
         if type(units) is not list:
             log.error('units argument is not a list')
@@ -45,7 +45,7 @@ class DeterDashboard(object):
 
         viz_table = database.getCollection(DeterDashboard.viz_data_table)
         viz_table.insert({
-            'datatype': DeterDashboard.horizon_chart_type,
+            'datatype': DeterDashboard.time_plot_type,
             'display': display,
             'table': table,
             'node_key': node_key,
