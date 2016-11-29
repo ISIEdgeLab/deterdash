@@ -122,5 +122,7 @@ if [[ ${ev} -ne 0 ]]; then
     exit 40
 fi
 
+echo Deterdash is running. 
+
 # \o/
 exit 0
