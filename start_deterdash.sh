@@ -95,7 +95,7 @@ if [[ ! -e /usr/local/lib/python2.7/dist-packages/libdeterdash-0.1.egg-info ]]; 
 fi
 
 # start the webserver as a daemon.
-PIDFILE=${mount_dir}/deterdash/deterdash.pid
+PIDFILE=/var/run/deterdash.pid
 start-stop-daemon --start --quiet --make-pidfile --pidfile ${PIDFILE} --background \
     --startas /bin/bash -- -c "exec ${mount_dir}/deterdash/runserver.py -l debug > /var/log/deterdash 2>&1"
 
@@ -106,23 +106,70 @@ else
     echo deterdash started.
 fi
 
-# wait a few seconds and see if it's still running. 
-echo Pausing 5 second to confirm deterdash is still running...
-sleep 5
-
-start-stop-daemon --status --pidfile ${PIDFILE}
-ev=$?
-
-if [[ ${ev} -eq 1 ]]; then 
-    rm -f ${PIDFILE} > /dev/null 2>&1
-fi
-
-if [[ ${ev} -ne 0 ]]; then 
-    echo Deterdash has stopped. Please look in /var/log/deterdash for details.
-    exit 40
-fi
+# # wait a few seconds and see if it's still running. 
+# echo Pausing 5 second to confirm deterdash is still running...
+# sleep 5
+# 
+# start-stop-daemon --status --pidfile ${PIDFILE}
+# ev=$?
+# 
+# if [[ ${ev} -eq 1 ]]; then 
+#     rm -f ${PIDFILE} > /dev/null 2>&1
+# fi
+# 
+# if [[ ${ev} -ne 0 ]]; then 
+#     echo Deterdash has stopped. Please look in /var/log/deterdash for details.
+#     exit 40
+# fi
 
 echo Deterdash is running. 
+
+### GTL NOTE THE CODE BELOW DOESN'T actually work well as there is a dependency on 
+### Magi being started/installed which is not taken into account. Until deterdash is 
+### uncoupled from Magi or Magi is integrated into upstart/init, this won't work 
+### well.
+# if [[ ! -e /etc/init/deterdash.conf ]]; then 
+#     echo Creating /etc/init scripts to restart deterdash on reboot.
+# 
+#     # Note there are embedded tabs in there here documents! Do not remove them.
+# 	cat >> /etc/init/deterdash.conf <<-EOF
+# 		description "deterdash"
+# 		start on runlevel [2345]
+# 		respawn
+# 	EOF
+# 
+# 	cat >> /etc/init.d/deterdash <<-EOF
+# 		#!/bin/sh
+# 		
+# 		. /lib/lsb/init-functions
+# 		    
+# 		case \$1 in 
+# 		    start) 
+# 		        log_daemon_msg "Starting deterdash"
+# 		        start-stop-daemon --start --quiet --make-pidfile --pidfile ${PIDFILE} --background \\
+# 		               --startas /bin/bash -- -c "exec ${mount_dir}/deterdash/runserver.py -l debug > /var/log/deterdash 2>&1"
+# 		        log_end_msg 0
+# 		        exit 0
+# 		        ;;
+# 		    stop) 
+# 		        log_daemon_msg "Starting deterdash"
+# 		        start-stop-daemon --stop --quiet --pidfile ${PIDFILE}
+# 		        log_end_msg 0
+# 		        exit 0
+# 		        ;;
+# 		    status)
+# 		        start-stop-daemon --status --pidfile ${PIDFILE}
+# 		        exit \$?
+# 		        ;;
+# 		    *)
+# 		        echo "Usage: "\$1" {start|stop}"
+# 		        exit 1
+# 		        ;;
+# 		esac
+# 		
+# 		exit 0
+# 	EOF
+# fi
 
 # \o/
 exit 0
