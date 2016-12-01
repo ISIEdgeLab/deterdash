@@ -58,20 +58,22 @@ def load_default_viz_ui_types():
 
 def get_viz_ui_types():
     db = magi_db()
-    cursor = db.experiment_data.find({'agent': 'viz_ui'})
+    cursor = db.experiment_data.find({'agent': 'viz_ui'}, {'_id': False})
     return list(cursor)
 
 
 def get_viz_agent_nodes(datatype, agentname):
     db = magi_db()
     node_keys = db.experiment_data.find(
-        {'agent': 'viz_data', 'datatype': datatype, 'table': agentname}).distinct('node_key')
+        {'agent': 'viz_data', 'datatype': datatype, 'table': agentname},
+        {'_id': False}
+    ).distinct('node_key')
 
     if not len(node_keys):
         return None
 
     # assuming one node is is a bad thing.
-    nodes = db.experiment_data.find({'agent': agentname}).distinct(node_keys[0])
+    nodes = db.experiment_data.find({'agent': agentname}, {'_id': False}).distinct(node_keys[0])
     nodes.sort()
     return nodes
 
@@ -80,7 +82,9 @@ def get_viz_agent(datatype, agentname):
     '''Get a specific agent. e.g. the pkt_count agent's data for time plot.'''
     db = magi_db()
     cursor = db.experiment_data.find(
-        {'agent': 'viz_data', 'datatype': datatype, 'table': agentname}).sort([('created', 1)])
+        {'agent': 'viz_data', 'datatype': datatype, 'table': agentname},
+        {'_id': False}
+    ).sort([('created', 1)])
 
     return list(cursor)[0]
 
@@ -90,8 +94,11 @@ def get_viz_agents(datatype):
     db = magi_db()
     seen = []
     agents = []
-    docs = db.experiment_data.find({'agent': 'viz_data', 'datatype': datatype}).sort(
-        [('display', 1)])
+    docs = db.experiment_data.find(
+        {'agent': 'viz_data', 'datatype': datatype},
+        {'_id': False}
+    ).sort([('display', 1)])
+
     for doc in docs:
         if doc['table'] not in seen:
             agents.append(doc)
@@ -103,7 +110,7 @@ def get_node_viztypes(node):
     # db.experiment_data.find({agent: "viz_data", host: 'crypto1'})
     db = magi_db()
     finded = db.experiment_data.find(
-        {'agent': 'viz_data', 'host': node})
+        {'agent': 'viz_data', 'host': node}, {'_id': False})
 
     if not finded:
         return None
@@ -128,7 +135,8 @@ def get_node_viztypes(node):
 def get_node_agents(node):
     db = magi_db()
     found = db.experiment_data.find(
-        {'agent': 'viz_data', 'host': node})
+        {'agent': 'viz_data', 'host': node},
+        {'_id': False})
 
     if not found:
         return None
