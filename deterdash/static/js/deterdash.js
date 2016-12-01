@@ -238,10 +238,13 @@ console.log('deterdash loaded.');
         );
     }
 
-    deterdash.spawn_time_plot = function(divid, data_key, table, datatype) {
+    deterdash.spawn_time_plot = function(agent_json, plot_divid, chart_title_id, chart_units_dropdown_id) {
+        console.log('agent_json', agent_json); 
         var nodes = [];   // array of dict of node data.
-        var chart_units = data_key; 
-        var agent = table;
+        var data_key = agent_json.units[0].data_key; 
+        var datatype = agent_json.datatype;
+        var agent = agent_json.table; // Don't ask. 
+        var data_units = agent_json.units;
 
         var margin = {top: 20, right: 120, bottom: 50, left: 60},
             width = 900 - margin.left - margin.right,
@@ -263,7 +266,7 @@ console.log('deterdash loaded.');
                     .x(function(d) { return x_scale(d.timestamp); })
                     .y(function(d) { return y_scale(d.value); });
 
-        var svg = d3.select("#" + divid)
+        var svg = d3.select(plot_divid)
                     .append("svg")
                         .attr("class", "chart")
                         .attr("height", height + margin.top + margin.bottom)
@@ -299,10 +302,37 @@ console.log('deterdash loaded.');
         // start the transition/moving plot.
         update_plot(); 
 
+        // Build the units dropdown menu and update the panel title. 
+        var build_units_drop_down = function() {
+            // u'units': [{u'data_key': u'cpu_usage', 
+            //             u'display': u'CPU Usage',  
+            //             u'unit': u' '},            
+            //
+            set_chart_title(data_units[0]);
+            var dropdown = d3.select(chart_units_dropdown_id)
+                .selectAll("li")
+                .data(data_units)
+                    .enter()
+                    .append("li")
+                    .text(function(d) { return d.display; })
+                    .on("click", function(d) {
+                        set_chart_title(d)
+                        data_key = d.data_key;
+                    });
+        }(); 
+
+        function set_chart_title(unit) { 
+            var chart_title = unit.display;
+            if (unit.unit) {
+                chart_title += " (" + unit.unit + ")";
+            }
+            d3.select(chart_title_id).text(chart_title);
+        }
+
         function build_plot() {
             var get_node_names = new Promise(
                 function(resolve, reject) {
-                    var url = window.location.origin + "/api/time_plot/" + table + "/nodes";
+                    var url = window.location.origin + "/api/time_plot/" + agent + "/nodes";
                     console.log("calling ", url)
                     d3.json(url, 
                         function(error, json) {
@@ -378,7 +408,7 @@ console.log('deterdash loaded.');
                     url += 'start=' + Math.floor(start/1000);  // server speaks seconds.
                     url += '&stop=' + Math.floor(stop/1000); 
                     url += '&step=' + 1;   // one second steps. 
-                    url += '&metric=' + 'random';  // GTL TESTING REMOVE RANDOM use --> chart_units;
+                    url += '&metric=' + data_key;
                     url += '&agent=' + agent;
                     console.log("requesting url: ", url); 
                     d3.json(url, function(error, json) {
@@ -400,7 +430,7 @@ console.log('deterdash loaded.');
 
                 get_node_data.then(
                     function(data) {
-                        var x_exts = [], y_exts = []; 
+                        var y_exts = []; 
                         for (var data_i in data) { 
                             var node_i = nodes.findIndex(function(n) { return n.name === data[data_i]["node"]; })
                             if (node_i !== -1) {
@@ -413,7 +443,6 @@ console.log('deterdash loaded.');
                                 });
                                 if (points.length > 0) {
                                     // keep track of max/min for x and y for this path.
-                                    x_exts.push.apply(x_exts, d3.extent(points, function(d) { return d.timestamp; }));
                                     y_exts.push.apply(y_exts, d3.extent(points, function(d) { return d.value; }));
                                     nodes[node_i].path.attr("d", line(points));
                                 }
@@ -422,7 +451,6 @@ console.log('deterdash loaded.');
                                 console.log('ERROR: Got data for a node we know nothning about.')
                             }
                         }
-                        if (x_exts.length !== 0) x_ext = d3.extent(x_exts);
                         if (y_exts.length !== 0) y_ext = d3.extent(y_exts);
                     }, 
                     function(error) {
@@ -450,8 +478,6 @@ console.log('deterdash loaded.');
                  .ease(d3.easeLinear)
                  .call(d3.axisBottom(x_scale).tickFormat(d3.timeFormat("%H:%M:%S")))
 
-            // d3.select(".paths")
-            // d3.selectAll("paths")
             paths.selectAll("path")
                     .attr('transform', null)
                  .transition()
