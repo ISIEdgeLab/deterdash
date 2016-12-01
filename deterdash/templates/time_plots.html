@@ -8,9 +8,7 @@
 <div class="col-lg-12">
     <div class="panel panel-default">
         <div class="panel-heading">
-            <span id="chart_title">
-                <b>{{ agent.units[0].display|title }} ({{ agent.units[0].unit }})</b>
-            </span>
+            <span id="chart_title"></span>
             <div class="pull-right">
                 <span>
                     <div class="btn-group">
@@ -18,25 +16,7 @@
                             Chart Units
                             <span class="caret"></span>
                         </button>
-                        <ul class="dropdown-menu pull-right" role="menu">
-                            {% for unit in agent.units %}
-                            <li>
-                                <a href="#" id="units_{{ unit.data_key }}">{{ unit.display|title }}</a>
-                            </li>
-                            {% endfor %}
-                            <li>
-                                <a href="#" id="units_random">Random</a>
-                            </li>
-                        </ul>
-                    </div>
-                    <div class="btn-group">
-                        <button type="button" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown">
-                            Sort By
-                            <span class="caret"></span>
-                        </button>
-                        <ul class="dropdown-menu pull-right" role="menu">
-                            <li><a href="#" class="time_plot_sort_name_ascend">Node Name Ascending</a> </li>
-                            <li><a href="#" class="time_plot_sort_name_descend">Node Name Descending</a> </li>
+                        <ul id="chart_units_dropdown" class="dropdown-menu pull-right" role="menu">
                         </ul>
                     </div>
                 </span>
@@ -48,10 +28,10 @@
             <div class="panel-body" id="time_plots_id"></div> 
             <script type="text/javascript">
                 var time_plots = deterdash.spawn_time_plot(
-                        "time_plots_id",
-                        "{{ agent.units[0].data_key }}",
-                        "{{ agent.table }}",
-                        "{{ agent.datatype }}"); 
+                        {{ agent|tojson }},         // using jinja2 tojson filter to convert to json.
+                        "#time_plots_id",
+                        "#chart_title",
+                        "#chart_units_dropdown"); 
                 </script>
             </div> <!-- /#time_plots_id -->
         </div>
