@@ -21,7 +21,7 @@ def _get_random_data(start, stop, step, node):
             # GTL need to trim the random_data at some point.
             random_data[node][t] = random.normalvariate(50, 5)
 
-        data.append(random_data[node][t])
+        data.append({'t': t, 'value': random_data[node][t]})
 
     return {'node': node, 'values': data}
 
@@ -72,21 +72,11 @@ def get_viz_time_plot_data_node(start, stop, step, node, metric, agent):
     ).sort('created', pymongo.ASCENDING)
 
     # now we have sorted data. We need to match the requested time slots with
-    # the requested data. The DB data may be sparse.
-    data = OrderedDict([(t, 0.0) for t in xrange(start, stop, step)])
+    # the requested data. The DB data may be sparse so start with 0.0 values for all points.
+    data = {t: 0.0 for t in xrange(start, stop, step)}
     if cursor.alive:
         for row in cursor:
             data[int(row['created'])] = row[metric]
 
-        # data = [row[metric] for row in cursor]
-        # t = start
-        # i = 0
-        # for row in cursor:
-        #     if int(row['created']) >= t:
-        #         data.append(row[metric])
-        #         t += step
-        #     else:
-        #         data.append(0.0)
-
-        #     i += step
-    return {'node': node, 'values': data.values()}
+    # return {'node': node, 'values': data}
+    return {'node': node, 'values': [{"t": k, "value": v} for k, v in data.iteritems()]}

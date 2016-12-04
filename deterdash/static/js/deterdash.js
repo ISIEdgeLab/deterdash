@@ -250,20 +250,21 @@ console.log('deterdash loaded.');
             width = 900 - margin.left - margin.right,
             height = 600 - margin.top - margin.bottom;
 
-        var num_data_points = 60,
-            limit = 60,
-            stop = Date.now(),
-            start = stop - (num_data_points*1000),
-            x_ext = [start, stop],
+        var limit = 60 * 1000,      // view window in ms
+            duration = 5000,        // fetch new data in ms
+            now = new Date(),       // Date is ms
             y_ext = [0, 100];       // just a guess - will be updated as data comes in.
 
-        var data_refresh = 5000;  // in ms.
         var path_color = d3.scaleOrdinal(d3.schemeCategory10)
 
-        var x_scale = d3.scaleTime().domain(x_ext).range([0, width])
+        // var x_scale = d3.scaleTime().domain(x_ext).range([0, width])
+        var x_scale = d3.scaleTime()
+                        .domain([new Date(now-limit), now])
+                        .range([0, width])
         var y_scale = d3.scaleLinear().domain(y_ext).range([height, 0])
+
         var line = d3.line()
-                    .x(function(d) { return x_scale(d.timestamp); })
+                    .x(function(d) { return x_scale(new Date(d.t*1000)); })  // scale is ms, t is seconds.
                     .y(function(d) { return y_scale(d.value); });
 
         var svg = d3.select(plot_divid)
@@ -299,15 +300,10 @@ console.log('deterdash loaded.');
             build_plot();
         });
 
-        // start the transition/moving plot.
-        update_plot(); 
-
         // Build the units dropdown menu and update the panel title. 
         var build_units_drop_down = function() {
-            // u'units': [{u'data_key': u'cpu_usage', 
-            //             u'display': u'CPU Usage',  
-            //             u'unit': u' '},            
-            //
+            // GTL for testing - add random data to plot (server side)
+            data_units.push({display: "random", data_key: "random"})
             set_chart_title(data_units[0]);
             var dropdown = d3.select(chart_units_dropdown_id)
                 .selectAll("li")
@@ -356,14 +352,20 @@ console.log('deterdash loaded.');
                     if (nodes.length !== 0) {
                         nodes.splice(0, nodes.length)
                     }
+                    // create the nodes.
                     for (var i=0; i<json['nodes'].length; i++) {
-                        var path = paths.append("path").attr("stroke", path_color(i)).attr("fill", "none"); 
-                        nodes.push({
+                        var node = {
                             name: json['nodes'][i],
-                            path: path,
+                            data: [],         // array of time, value pairs: [{t1, v1}, {t2, v2}...{tn, vn}]
                             color:path_color(i)
-                        }); // not sure I need data here. 
+                        }; 
+                        node.path = paths.append("path")
+                                         .data([node.data])
+                                         .attr("stroke", path_color(i))
+                                         .attr("fill", "none"); 
+                        nodes.push(node);
                     }
+                    // create the legend now that we know the node names and colors. 
                     legend = svg.selectAll(".legend")
                             .data(nodes)
                             .enter()
@@ -389,7 +391,7 @@ console.log('deterdash loaded.');
                           .text(function(d) { return d.name; })
 
                     // start getting data updates and update the paths.
-                    read_node_data()
+                    read_node_data(null)
                 }, 
                 function(message, error) {
                     console.log(message, error); 
@@ -397,17 +399,24 @@ console.log('deterdash loaded.');
             )
         }
 
-        function read_node_data() {
+        function read_node_data(then) {
             console.log("read_node_data called")
             var get_node_data = new Promise(
                 function(resolve, reject) {
-                    stop = Date.now();
-                    start = stop - (num_data_points*1000); 
+                    now = new Date();
+
+                    // first time request limit of data, after just request the new stuff.
+                    if (!then) { 
+                        var start = new Date(now - limit)
+                    } else {
+                        var start = new Date(then);
+                    }
+                    console.log("requesting data for period ", start, " to ", now); 
 
                     var url = window.location.origin + "/api/" + datatype + "/json?";
-                    url += 'start=' + Math.floor(start/1000);  // server speaks seconds.
-                    url += '&stop=' + Math.floor(stop/1000); 
-                    url += '&step=' + 1;   // one second steps. 
+                    url += 'start=' + Math.floor(start/1000);   // server speaks seconds not ms.
+                    url += '&stop=' + Math.floor(now/1000); 
+                    url += '&step=' + 1;                        // one second steps. 
                     url += '&metric=' + data_key;
                     url += '&agent=' + agent;
                     console.log("requesting url: ", url); 
@@ -434,17 +443,23 @@ console.log('deterdash loaded.');
                         for (var data_i in data) { 
                             var node_i = nodes.findIndex(function(n) { return n.name === data[data_i]["node"]; })
                             if (node_i !== -1) {
-                                // console.log("updating plot data for ", nodes[node_i].name, ": ", 
-                                //         data[data_i].values.slice(0, 10)); 
-                                // format data - add implied timestamp. 
-                                var points = [];
-                                data[data_i].values.forEach(function(v, i) { 
-                                    points.push({value: v, timestamp: start+(i*1000)}); 
-                                });
-                                if (points.length > 0) {
+                                if (data[data_i].values.length > 0) {
+                                    // remove timed out data. 
+                                    var killto = nodes[node_i].data.findIndex(function(d) {
+                                        return d.t >= (now-limit)/1000;
+                                    })
+                                    if (killto >= 0) {
+                                        console.log('removing ' + killto + ' datapoints from ' + nodes[node_i].name);
+                                        nodes[node_i].data.splice(0, killto+1) 
+                                    }
+                                    // append new data.
+                                    nodes[node_i].data.push.apply(nodes[node_i].data, data[data_i].values);
                                     // keep track of max/min for x and y for this path.
-                                    y_exts.push.apply(y_exts, d3.extent(points, function(d) { return d.value; }));
-                                    nodes[node_i].path.attr("d", line(points));
+                                    y_exts.push.apply(y_exts, d3.extent(nodes[node_i].data, function(d) { 
+                                        return d.value; 
+                                    }));
+                                    // now update the path in the svg with current data.
+                                    nodes[node_i].path.attr("d", line)
                                 }
                             }
                             else {
@@ -458,33 +473,35 @@ console.log('deterdash loaded.');
                     }
                 )
 
-                update_plot();
-                setTimeout(read_node_data, data_refresh); 
-        }
+                // update the plots. 
+                x_scale.domain([new Date(now - limit), now])
 
-        function update_plot() {
-            x_scale.domain([start, stop]); 
-            y_scale.domain([y_ext[0]-(y_ext[0]*0.1), y_ext[1]+(y_ext[1]*0.1)]); 
-            console.log("udpating plot", start, stop, x_scale(stop-data_refresh), x_ext)
+                if (y_ext[1]-y_ext[0] > 0.01) {
+                    y_scale.domain([y_ext[0]-(y_ext[0]*0.1), y_ext[1]+(y_ext[1]*0.1)]); 
+                } else {
+                    y_scale.domain([0,1]);  // shrug.    
+                }
 
-            //yaxis.transition()
-            //     .duration(data_refresh)
-            //     .ease(d3.easeLinear)
-            //     .call(d3.axisLeft(y_scale))
-            yaxis.call(d3.axisLeft(y_scale))
+                //yaxis.transition()
+                //     .duration(data_refresh)
+                //     .ease(d3.easeLinear)
+                //     .call(d3.axisLeft(y_scale))
+                yaxis.call(d3.axisLeft(y_scale))
 
-            xaxis.transition()
-                 .duration(data_refresh)
-                 .ease(d3.easeLinear)
-                 .call(d3.axisBottom(x_scale).tickFormat(d3.timeFormat("%H:%M:%S")))
-
-            paths.selectAll("path")
-                    .attr('transform', null)
-                 .transition()
-                    .duration(data_refresh)
+                xaxis.transition()
+                    .duration(duration)
                     .ease(d3.easeLinear)
-                    .attr('transform', 'translate(' + x_scale(start-data_refresh) + ', 0)')
-                    // .on("end", update_plot); 
+                    .call(d3.axisBottom(x_scale).tickFormat(d3.timeFormat("%H:%M:%S")))
+
+                paths.attr('transform', null)
+                    .transition()
+                    .duration(duration)
+                    .ease(d3.easeLinear)
+                    .attr('transform', 'translate(' + -x_scale(new Date(now - limit + duration)) + ')')
+                    .on('end', function() { read_node_data(now); })
+
+
+                // setTimeout(read_node_data, duration); 
         }
     }
 
