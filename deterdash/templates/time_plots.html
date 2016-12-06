@@ -11,7 +11,7 @@
             <span id="chart_title"></span>
             <div class="pull-right">
                 <span>
-                    <div class="btn-group">
+                    <div class="btn-group control-button-grp">
                         <button type="button" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown">
                             Chart Units
                             <span class="caret"></span>
@@ -31,7 +31,8 @@
                         {{ agent|tojson }},         // using jinja2 tojson filter to convert to json.
                         "#time_plots_id",
                         "#chart_title",
-                        "#chart_units_dropdown"); 
+                        "#chart_units_dropdown",
+                        ".control-button-grp"); 
                 </script>
             </div> <!-- /#time_plots_id -->
         </div>

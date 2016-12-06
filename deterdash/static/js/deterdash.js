@@ -238,7 +238,8 @@ console.log('deterdash loaded.');
         );
     }
 
-    deterdash.spawn_time_plot = function(agent_json, plot_divid, chart_title_id, chart_units_dropdown_id) {
+    deterdash.spawn_time_plot = function(agent_json, plot_divid, chart_title_id, 
+                chart_units_dropdown_id, control_btn_group_id) {
         console.log('agent_json', agent_json); 
         var nodes = [];   // array of dict of node data.
         var data_key = agent_json.units[0].data_key; 
@@ -247,7 +248,7 @@ console.log('deterdash loaded.');
         var data_units = agent_json.units;
 
         var margin = {top: 20, right: 120, bottom: 50, left: 60},
-            width = 900 - margin.left - margin.right,
+            width = 950 - margin.left - margin.right,
             height = 600 - margin.top - margin.bottom;
 
         var limit = 60 * 1000,      // view window in ms
@@ -277,23 +278,27 @@ console.log('deterdash loaded.');
 
         var clip = svg.append("defs")               // limit the plots to a visible area.
                       .append("clipPath")
-                        .attr("id", "clip")
+                        .attr("id", "paths-clip")
                         .append("rect")
                             .attr("height", height)
                             .attr("width", width)
 
-        var paths = svg.append("g")
+        var paths = svg.append("g")     // wrap the paths in the clipPath so we don't see data past the y-axis.
+                        .attr("clip-path", "url(#paths-clip)")
+                        .append("g") 
                         .attr("class", "paths")
-                        .attr("clip-path", "url(#clip)");
 
         var xaxis = svg.append("g")
                         .attr("transform", "translate(0," + height + ")")
                         .call(d3.axisBottom(x_scale).tickFormat(d3.timeFormat("%H:%M:%S")));
+
         var yaxis = svg.append("g").call(d3.axisLeft(y_scale));
 
         var legend_rect_size = 18,
             legend_spacing = 4,
             legend = null; 
+
+        var paused = false;
 
         // Grab the node names from the server and create the plot for the node data. 
         $(document).ready(function() {
@@ -310,11 +315,14 @@ console.log('deterdash loaded.');
                 .data(data_units)
                     .enter()
                     .append("li")
-                    .text(function(d) { return d.display; })
-                    .on("click", function(d) {
-                        set_chart_title(d)
-                        data_key = d.data_key;
-                    });
+                    .append("a")
+                        .attr("href", "#")
+                        .text(function(d) { return d.display; })
+                        .on("click", function(d) {
+                            set_chart_title(d)
+                            data_key = d.data_key;
+                            nodes.forEach(function(n) { n.data.splice(0, n.data.length); });
+                        });
         }(); 
 
         function set_chart_title(unit) { 
@@ -324,6 +332,30 @@ console.log('deterdash loaded.');
             }
             d3.select(chart_title_id).text(chart_title);
         }
+
+        var build_pause_button = function() { 
+            console.log("building pause button")
+            var button = d3.select(control_btn_group_id)
+                .append("button")
+                .attr("type", "button")
+                .classed("btn btn-xs btn-default", true)
+
+            var icon = button.append("i").classed("fa fa-pause", true)
+
+            button.on("click", function(d) { 
+                if(!paused) {
+                    icon.classed("fa-pause", false)
+                    icon.classed("fa-play", true)
+                    paused = true
+                } else {
+                    icon.classed("fa-pause", true)
+                    icon.classed("fa-play", false)
+                    paused = false;
+                    read_node_data(null) 
+                }
+            })
+
+        }();  // actaully call the function. 
 
         function build_plot() {
             var get_node_names = new Promise(
@@ -360,7 +392,7 @@ console.log('deterdash loaded.');
                             color:path_color(i)
                         }; 
                         node.path = paths.append("path")
-                                         .data([node.data])
+                                         // .data([node.data])
                                          .attr("stroke", path_color(i))
                                          .attr("fill", "none"); 
                         nodes.push(node);
@@ -405,11 +437,13 @@ console.log('deterdash loaded.');
                 function(resolve, reject) {
                     now = new Date();
 
+                    // If we have fewer datapoints than the limit, just get all the datra OR
                     // first time request limit of data, after just request the new stuff.
-                    if (!then) { 
-                        var start = new Date(now - limit)
+                    if (nodes[0].data.length < limit/1000 || !then) {
+                        var start = new Date(now-limit);
+                        nodes.forEach(function(n) { n.data.splice(0, n.data.length); });
                     } else {
-                        var start = new Date(then);
+                        var start = new Date(then);  // just get the new data. 
                     }
                     console.log("requesting data for period ", start, " to ", now); 
 
@@ -444,22 +478,16 @@ console.log('deterdash loaded.');
                             var node_i = nodes.findIndex(function(n) { return n.name === data[data_i]["node"]; })
                             if (node_i !== -1) {
                                 if (data[data_i].values.length > 0) {
-                                    // remove timed out data. 
-                                    var killto = nodes[node_i].data.findIndex(function(d) {
-                                        return d.t >= (now-limit)/1000;
-                                    })
-                                    if (killto >= 0) {
-                                        console.log('removing ' + killto + ' datapoints from ' + nodes[node_i].name);
-                                        nodes[node_i].data.splice(0, killto+1) 
-                                    }
-                                    // append new data.
+                                    // merge new data.
                                     nodes[node_i].data.push.apply(nodes[node_i].data, data[data_i].values);
+                                    // We should not ahve to do this, but here we are.
+                                    nodes[node_i].data.sort(function(d1, d2) { if(d1.t < d2.t) return -1; return 1;});
                                     // keep track of max/min for x and y for this path.
                                     y_exts.push.apply(y_exts, d3.extent(nodes[node_i].data, function(d) { 
                                         return d.value; 
                                     }));
                                     // now update the path in the svg with current data.
-                                    nodes[node_i].path.attr("d", line)
+                                    nodes[node_i].path.attr("d", line(nodes[node_i].data))
                                 }
                             }
                             else {
@@ -493,16 +521,34 @@ console.log('deterdash loaded.');
                     .ease(d3.easeLinear)
                     .call(d3.axisBottom(x_scale).tickFormat(d3.timeFormat("%H:%M:%S")))
 
+                // paths.selectAll("path")
                 paths.attr('transform', null)
                     .transition()
                     .duration(duration)
                     .ease(d3.easeLinear)
                     .attr('transform', 'translate(' + -x_scale(new Date(now - limit + duration)) + ')')
-                    .on('end', function() { read_node_data(now); })
+                    .on('end', function() { 
+                        if (!paused) { 
+                            // remove old data and update the lines so that when the selection jumps back, the 
+                            // lines will be in the correct place while waiting for new data to arrive.
+                            var post_trans = new Date()
+                            x_scale.domain([new Date(post_trans - limit), post_trans])
+                            nodes.forEach(function(n) { 
+                                var killto = n.data.findIndex(function(d) {
+                                    return d.t >= (post_trans-limit)/1000;
+                                })
+                                if (killto > 0) {
+                                    n.data.splice(0, killto) 
+                                    n.path.attr("d", line(n.data)); 
+                                }
+                            });
+                            // get new data. 
+                            read_node_data(now);
+                        }
+                        // else the button handler for the "start" button will call read_node_data(null);
+                    });
 
-
-                // setTimeout(read_node_data, duration); 
-        }
+            }
     }
 
     return deterdash;
