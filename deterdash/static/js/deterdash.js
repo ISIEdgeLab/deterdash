@@ -452,9 +452,9 @@ console.log('deterdash loaded.');
                             .classed("legend", true)
                             .attr("transform", function(d, i) {
                                 var height = legend_rect_size + legend_spacing;
-                                var offset = height * nodes.length / 2; 
+                                var offset = height * nodes.length / 4; 
                                 var horz = 2 * legend_rect_size;
-                                var vert = i * height + offset; 
+                                var vert = i * height + offset - 30; 
                                 return "translate(" + horz + "," + vert + ")";
                             });
 
