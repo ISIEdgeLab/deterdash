@@ -9,6 +9,53 @@ console.log('deterdash loaded.');
     var deterdash = window.deterdash || {};
     window.deterdash = deterdash;    // GTL this seems wrong.
 
+    deterdash.load_experiment_info = function(title_id, exp_url_id) { 
+        var exp_info_promise = new Promise(
+            function(resolve, reject) {
+                d3.json(window.location.origin + "/api/exp_info",
+                    function(error, json) {
+                        if(error) {
+                            reject("error getting experiment info from server");
+                            return;
+                        }
+                        if(json.status !== 0) {
+                            reject("server unable to get exp info.");
+                            return;
+                        }
+                        resolve(json);
+                    }
+                );
+            });
+
+            exp_info_promise.then(
+                function(exp_info_json) {
+                    var exp_name = exp_info_json['project'] + "/" + exp_info_json['experiment']
+                    var exp_url = "http://www.isi.deterlab.net/showexp.php?pid=" + exp_info_json['project'] +
+                                  "&eid=" + exp_info_json['experiment']
+                    d3.select(title_id)
+                        .text("DETER Metrics Dashboard - ")
+                        .append("b")
+                            .text(exp_name)
+
+                    d3.select(exp_url_id)
+                        .select("a")
+                        .remove()
+                    d3.select(exp_url_id)
+                        .append("a")
+                            .attr("href", exp_url)
+                        .append("i")
+                            .classed("fa fa-flask", true)
+                        .text(" " + exp_name + " on DETER")
+
+                },
+                function(error) {
+                    console.log("error getting exp info: " + error);
+                }
+            ).catch(function(reason) {
+                console.log("error setting dashboad title: " + reason);
+            });
+    }
+
     // deterdash.spawn_horizon_graph = function(divid, nodename, agent, unit) {
     //     console.log('spawn_horizon_graph called with: ', divid, nodename, agent, unit); 
 
