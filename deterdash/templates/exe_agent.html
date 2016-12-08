@@ -1,0 +1,29 @@
+{% extends "dashboard.html" %}
+
+{% block metric_title %}
+<h1 class="page-header"><i class="fa fa-bar-chart-o fa-fw"></i>{{ agent.display }} - {{ agent.name }}</h1>
+{% endblock %}
+
+{% block content %}
+<div class="col-lg-12">
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <span>Agent: {{ agent.display }}</span>
+        </div>
+        <!-- /.panel-heading -->
+        <!-- /.panel-body -->
+        <div class="panel-body">
+            <div class="panel-body" id="exe_agent_divid"></div> 
+            <script type="text/javascript">
+                var exe_agent = deterdash.show_exe_agent(
+                        {{ agent|tojson }},         // using jinja2 tojson filter to convert to json.
+                        "#exe_agent_divid"); 
+                </script>
+            </div> <!-- /#time_plots_id -->
+        </div>
+        <!-- /.panel-body -->
+    </div>
+</div>
+<!-- /.col-lg-4 -->
+{% endblock %}
+
