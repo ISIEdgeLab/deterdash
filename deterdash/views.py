@@ -8,7 +8,8 @@ from .routing import get_route_tables, get_route_path
 from .viz_data import get_viz_ui_types, get_viz_agents, get_viz_agent, get_node_viztypes
 from .viz_data import get_node_agents
 from .viz_data import get_viz_agent_nodes
-from .exp_info import get_exp_info
+from .exp_info import get_exp_info, get_exp_nodes
+from .exe_agents import get_executable_agents, get_executable_agent
 
 from .time_plots import get_viz_time_plot_data
 
@@ -57,6 +58,18 @@ def show_routes(agent):
     return render_template(agent['template'], agent=agent)
 
 #
+# display an executable agent.
+#
+@app.route('/viz/exe_agent/<agent_name>')
+def show_exe_agent(agent_name):
+    log.debug('showing exe agent {}'.format(agent_name))
+    agent = get_executable_agent(agent_name)
+    if not agent:
+        return jsonify(status=1, error='Did not find agent {}'.format(agent_name))
+
+    return render_template('exe_agent.html', agent=agent)
+
+#
 # api paths.
 #
 @app.route('/api/<datatype>/<agentname>/nodes')
@@ -75,6 +88,14 @@ def topology(agentname):
         return jsonify(status=1, error='topology not found for agent {}'.format(agentname))
 
     return jsonify(status=0, nodes=nodes, edges=edges)
+
+@app.route('/api/exp_nodes')
+def exp_nodes():
+    nodes = get_exp_nodes()
+    if not nodes:
+        return jsonify(status=1, error='Unable to read node information from the database.')
+
+    return jsonify(status=0, nodes=nodes)
 
 @app.route('/api/exp_info')
 def exp_info():
@@ -154,7 +175,7 @@ def node_agents(node):
 
 # give the graphable context to rendered templates.
 @app.context_processor
-def inject_graphables():
+def inject_dashboard_variables():
     ui_types = get_viz_ui_types()
     log.debug('found ui types: {}'.format(ui_types))
     for ui_type in ui_types:
@@ -162,4 +183,6 @@ def inject_graphables():
         log.debug('found ui agents for type {}: {}'.format(ui_type['datatype'], agents))
         ui_type.update({'agents': agents})
 
-    return dict(graphables=ui_types)
+    exe_agents = get_executable_agents()
+
+    return dict(graphables=ui_types, exe_agents=exe_agents)
