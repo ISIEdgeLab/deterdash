@@ -29,7 +29,7 @@ def load_default_viz_ui_types():
         },
         {
             'datatype': DeterDashboard.force_directed_graph_type,
-            'display': 'Graphs',
+            'display': 'Network Graphs',
             'icon': 'fa-sitemap',
             'endpoint': 'graphs',
             'implementation': 'force_graph.html'
