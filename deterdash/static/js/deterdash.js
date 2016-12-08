@@ -56,6 +56,60 @@ console.log('deterdash loaded.');
             });
     }
 
+    deterdash.show_exe_agent = function(agent, agent_divid) {
+        var agent_div = d3.select(agent_divid)
+        var rows_div = agent_div.append("div").attr("class", "row")
+
+        var build_table = function(rows_div, title, heading_map, table_data) {
+            var table_div = rows_div.append("div").attr("class", "col-lg-12")
+                            .append("div").classed("panel panel-default", true)
+            table_div.append("div").classed("panel-heading", true).text(title)
+            var table = table_div.append("div").classed("panel-body", true)
+                                      .append("div").classed("table-responsive", true)
+                                      .append("table").classed("table", true) 
+
+            var thead = table.append("thead")
+            var cols = Object.keys(heading_map)
+
+            thead.append("tr")
+                 .selectAll("th")
+                 .data(cols)
+                 .enter()
+                 .append("th")
+                     .text(function(d) { return d; })
+
+            var tbody = table.append("tbody")
+
+            // a row for each datapoint.
+            var rows = tbody.selectAll("tr")
+                             .data(table_data)
+                             .enter()
+                             .append("tr")
+
+            // now fill in the rows.
+            var cells = rows.selectAll("td")
+                            .data(function(row) {
+                                return cols.map(function(col) {
+                                    return {col: col, value: row[heading_map[col]]};
+                                })
+                            })
+                            .enter()
+                            .append("td")
+                                .text(function(d) { 
+                                    if (typeof d.value === "object") {
+                                        return "";
+                                    }
+                                    return d.value; 
+                                })
+        }
+
+        var init_heading_map = {Name: 'name', Type: 'type', Help: 'help'}
+        build_table(rows_div, "Intialization", init_heading_map, agent.variables)
+
+        var meth_heading_map = {Name: 'name', Arguments: 'args', Help: 'help'}
+        build_table(rows_div, "Methods", meth_heading_map, agent.method)
+    }
+
     // deterdash.spawn_horizon_graph = function(divid, nodename, agent, unit) {
     //     console.log('spawn_horizon_graph called with: ', divid, nodename, agent, unit); 
 
