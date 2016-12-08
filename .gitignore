@@ -2,4 +2,4 @@
 tags
 *.swp
 lib/libdeterdash/build/
-run.log
+run.log*
