@@ -1,5 +1,6 @@
 import logging
 import time
+import json
 from db import magi_db
 
 log = logging.getLogger(__name__)
@@ -41,3 +42,12 @@ def get_exp_info():
 
     return data
 
+def get_exp_nodes():
+    db = magi_db()
+    cursor = db.experiment_data.find_one({'agent': 'topo_agent'})
+
+    if not cursor or 'nodes' not in cursor:
+        return None
+
+    nodes = json.loads(cursor['nodes'])  # json encoded in the DB for some reason. In a json oriented DB no less.
+    return nodes
