@@ -75,7 +75,7 @@
                         </li>
                         <li class="divider"></li>
                         <li class="experiment_URL">
-                            <a><i class="fa fa-flask"></i>Experiment Page</a> 
+                            <a><i class="fa fa-flask"></i> Experiment Page</a> 
                         </li>
                     </ul>
                     <!-- /.dropdown-messages -->
@@ -138,6 +138,22 @@
                             </ul>
                         </li>
                         {% endfor %}
+                        {% if exe_agents|length > 0 %}
+                        <li>
+                            <a href="#">
+                                <i class="fa fa-cog"></i>
+                                Executable Agents
+                                <span class="fa arrow"></span>
+                            </a>
+                            <ul class="nav nav-second-level">
+                                {% for a in exe_agents %}
+                                    <li>
+                                        <a href="../../viz/exe_agent/{{ a.name }}">{{ a.display }}</a>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </li>
+                        {% endif %}
                     </ul>
                 </div>
             </div>
