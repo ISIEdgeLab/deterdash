@@ -41,6 +41,18 @@ def get_exp_info():
 
         data[row['host']] = {'is_container': row['is_container']}
 
+    cursor = db.experiment_data.find_one({
+        'agent': 'node_stats_users'
+    }, {
+        '_id': False,
+        'creator': True,
+        'swapper': True
+    })
+
+    if cursor:
+        data['creator'] = cursor['creator']
+        data['swapper'] = cursor['swapper']
+
     return data
 
 def get_exp_nodes():
