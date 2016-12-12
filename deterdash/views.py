@@ -8,7 +8,7 @@ from .routing import get_route_tables, get_route_path
 from .viz_data import get_viz_ui_types, get_viz_agents, get_viz_agent, get_node_viztypes
 from .viz_data import get_node_agents
 from .viz_data import get_viz_agent_nodes
-from .exp_info import get_exp_info, get_exp_nodes
+from .exp_info import get_exp_info, get_exp_nodes, get_node_info
 from .exe_agents import get_executable_agents, get_executable_agent
 
 from .time_plots import get_viz_time_plot_data
@@ -53,7 +53,7 @@ def show_routes(agent):
     log.debug('looking for graph for agent {}'.format(agent))
     agent = get_viz_agent('force_directed_graph', agent)
     if not agent:
-        return jsonify(status=1, error='Unable to that agent associated with any graph.')
+        return render_template("error.html", error='Unable to that agent associated with any graph.')
 
     return render_template(agent['template'], agent=agent)
 
@@ -65,9 +65,22 @@ def show_exe_agent(agent_name):
     log.debug('showing exe agent {}'.format(agent_name))
     agent = get_executable_agent(agent_name)
     if not agent:
-        return jsonify(status=1, error='Did not find agent {}'.format(agent_name))
+        return render_template("error.html", error='Did not find agent {}'.format(agent_name))
 
     return render_template('exe_agent.html', agent=agent)
+
+#
+# Display information about a node.
+#
+@app.route('/viz/node_info/<nodename>')
+def show_node_info(nodename):
+    log.debug('showing info about node {}'.format(nodename))
+
+    nodeinfo = get_node_info(nodename)
+    if not nodeinfo:
+        return render_template("error.html", error='Unable to get information about node {}.'.format(nodename))
+
+    return render_template('node_info.html', nodeinfo=nodeinfo)
 
 #
 # api paths.
@@ -80,6 +93,16 @@ def agent_nodes(datatype, agentname):
         return jsonify(status=1, error='data not found')
 
     return jsonify(status=0, nodes=nodes)
+
+@app.route('/api/node_info/<nodename>')
+def api_node_info(nodename):
+    log.debug('showing info about node {}'.format(nodename))
+
+    nodeinfo = get_node_info(nodename)
+    if not nodeinfo:
+        return jsonify(status=1, error='Unable to get information about node {}'.format(nodename))
+
+    return jsonify(status=0, nodeinfo=nodeinfo)
 
 @app.route('/api/topology/<agentname>')
 def topology(agentname):
@@ -169,11 +192,11 @@ def node_agents(node):
         return jsonify(status=1)
 
     return jsonify(status=0, agents=agents)
+
 #
 # context processors. this probably should go elsewhere as they are not views.
 #
-
-# give the graphable context to rendered templates.
+# give context to rendered templates.
 @app.context_processor
 def inject_dashboard_variables():
     ui_types = get_viz_ui_types()
@@ -184,5 +207,6 @@ def inject_dashboard_variables():
         ui_type.update({'agents': agents})
 
     exe_agents = get_executable_agents()
+    nodes = get_exp_nodes()
 
-    return dict(graphables=ui_types, exe_agents=exe_agents)
+    return dict(graphables=ui_types, exe_agents=exe_agents, nodes=nodes)
