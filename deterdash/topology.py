@@ -47,7 +47,7 @@ def get_topology(agent):
         {'_id': False, node_key: True, edge_key: True}
     ).sort('created', pymongo.DESCENDING).limit(1)
 
-    if cursor.count():
+    if cursor.alive and cursor.count():
         # topo_agent keeps them in json for some reason. So decode if we need to.
         nodes = cursor[0][node_key]
         edges = cursor[0][edge_key]
