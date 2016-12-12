@@ -24,7 +24,7 @@
         <!-- DETER Code -->
         <script src="{{ url_for('static', filename='js/deterdash.js') }}"></script>
         <script>
-            deterdash.load_experiment_info(".deterdash_title", ".experiment_URL");
+            deterdash.load_experiment_info(".experiment_id", ".experiment_swapper", ".experiment_URL")
         </script>
     </head>
     <body class="skin-black">
@@ -36,13 +36,20 @@
             </a>
             <!-- Header Navbar: style can be found in header.less -->
             <nav class="navbar navbar-static-top" role="navigation">
-                <!-- Sidebar toggle button-->
-                <a href="#" class="navbar-btn sidebar-toggle" data-toggle="offcanvas" role="button">
-                    <span class="sr-only">Toggle navigation</span>
-                    <span class="icon-bar"></span>
-                    <span class="icon-bar"></span>
-                    <span class="icon-bar"></span>
-                </a>
+                <div class="navbar-left">
+                    <ul class="nav navbar-nav">
+                        <li>
+                            <!-- Sidebar toggle button-->
+                            <a href="#" class="navbar-btn sidebar-toggle" data-toggle="offcanvas" role="button">
+                                <span class="sr-only">Toggle navigation</span>
+                                <span class="icon-bar"></span>
+                                <span class="icon-bar"></span>
+                                <span class="icon-bar"></span>
+                            </a>
+                        </li>
+                        <li><h3><a href="#" class="experiment_id"></a></h3></li>
+                    </ul>
+                </div>
                 <div class="navbar-right">
                     <ul class="nav navbar-nav">
                         <!-- useful links -->
@@ -103,16 +110,13 @@
                         <li class="dropdown user user-menu">
                             <a href="#" class="dropdown-toggle" data-toggle="dropdown">
                                 <i class="glyphicon glyphicon-user"></i>
-                                <span>DETER User <i class="caret"></i></span>
+                                <span><span class="experiment_swapper"> User </span><i class="caret"></i></span>
                             </a>
                             <ul class="dropdown-menu">
                                 <!-- User image -->
                                 <li class="user-header bg-light-blue">
                                 <img src="{{ url_for('static', filename='AdminLTE/img/avatar.png')}}" class="img-circle" alt="User Image" />
-                                    <p>
-                                        DETER User - Senor Scientist
-                                        <small>Member since Nov. 2012</small>
-                                    </p>
+                                    <p><span class='experiment_swapper'> User </span></p>
                                 </li>
                                 <!-- Menu Body -->
                                 <li class="user-body">
@@ -152,7 +156,7 @@
                             <img src="{{ url_for('static', filename='AdminLTE/img/avatar.png')}}" class="img-circle" alt="User Image" />
                         </div>
                         <div class="pull-left info">
-                            <p>Hello, Anon DETER user!</p>
+                            <p><span class="experiment_swapper"> User </span></p>
                             <a href="#"><i class="fa fa-circle text-success"></i> Online</a>
                         </div>
                     </div>

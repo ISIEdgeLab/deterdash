@@ -17,7 +17,7 @@ console.log('deterdash loaded.');
         titlediv.append("small").text(" " +subtitle)
     }
 
-    deterdash.load_experiment_info = function(title_id, exp_url_id) { 
+    deterdash.load_experiment_info = function(title_id, exp_user_divid, exp_url_id) { 
         var exp_info_promise = new Promise(
             function(resolve, reject) {
                 d3.json(window.location.origin + "/api/exp_info",
@@ -40,10 +40,20 @@ console.log('deterdash loaded.');
                     var exp_name = exp_info_json['project'] + "/" + exp_info_json['experiment']
                     var exp_url = "http://www.isi.deterlab.net/showexp.php?pid=" + exp_info_json['project'] +
                                   "&eid=" + exp_info_json['experiment']
-                    d3.select(title_id)
-                        .text("DETER Metrics Dashboard - ")
-                        .append("b")
-                            .text(exp_name)
+
+                    var title = d3.select(title_id)
+                        .text(exp_name)
+
+                    if ('swapper' in exp_info_json) { 
+                        title.append("small")
+                            .text(" swapped by: " + exp_info_json['swapper'])
+
+                        d3.selectAll(exp_user_divid).text(exp_info_json['swapper'])
+                    }
+                    if ('creator' in exp_info_json) { 
+                        title.append("small")
+                            .text(" created by: " + exp_info_json['creator'])
+                    }
 
                     d3.select(exp_url_id)
                         .select("a")
@@ -54,6 +64,8 @@ console.log('deterdash loaded.');
                         .append("i")
                             .classed("fa fa-flask", true)
                         .text(" " + exp_name + " on DETER")
+
+                        
 
                 },
                 function(error) {
@@ -387,7 +399,7 @@ console.log('deterdash loaded.');
                         .attr("transform", "translate(0," + height + ")")
                         .call(d3.axisBottom(x_scale).tickFormat(d3.timeFormat("%H:%M:%S")));
 
-        var yaxis = svg.append("g").call(d3.axisLeft(y_scale));
+        var yaxis = svg.append("g").call(d3.axisLeft(y_scale).tickFormat(d3.format('.0s')))
 
         var legend_rect_size = 18,
             legend_spacing = 4,
@@ -605,11 +617,7 @@ console.log('deterdash loaded.');
                     y_scale.domain([0,1]);  // shrug.    
                 }
 
-                //yaxis.transition()
-                //     .duration(data_refresh)
-                //     .ease(d3.easeLinear)
-                //     .call(d3.axisLeft(y_scale))
-                yaxis.call(d3.axisLeft(y_scale))
+                yaxis.call(d3.axisLeft(y_scale).tickFormat(d3.format('.0s')))
 
                 xaxis.transition()
                     .duration(duration)
