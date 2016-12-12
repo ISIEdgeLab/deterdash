@@ -15,6 +15,9 @@
             <div id="message_area"></div>
         </div>
         <script>
+            var subtitle = " {{agent.display}} ({{agent.table}})"
+            deterdash.set_title(".content-header", "fa-sitemap", "Network Graphs", subtitle)
+
             var win_w = $("#deter_topology").width(),
                 win_h = $("#deter_topology").height();
             var margin = {top: 5, right: 5, bottom: 5, left: 5};

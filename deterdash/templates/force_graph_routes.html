@@ -36,6 +36,8 @@
     </div>
 </div>
 <script>
+    var subtitle = " {{agent.display}} ({{agent.table}})"
+    deterdash.set_title(".content-header", "fa-sitemap", "Network Graphs", subtitle)
     var route_topo = deterdash.route_topology(
         "{{ agent.table }}",
         "#deter_topology",
