@@ -9,6 +9,14 @@ console.log('deterdash loaded.');
     var deterdash = window.deterdash || {};
     window.deterdash = deterdash;    // GTL this seems wrong.
 
+    deterdash.set_title = function(divid, icon, titlestr, subtitle) {
+        $(divid).empty()
+        var titlediv = d3.select(divid).append("h1")
+        titlediv.append("i").classed("fa", true).classed(icon, true)
+        titlediv.append("span").text(" " + titlestr)
+        titlediv.append("small").text(" " +subtitle)
+    }
+
     deterdash.load_experiment_info = function(title_id, exp_url_id) { 
         var exp_info_promise = new Promise(
             function(resolve, reject) {
@@ -56,15 +64,17 @@ console.log('deterdash loaded.');
             });
     }
 
-    deterdash.show_exe_agent = function(agent, agent_divid) {
-        var agent_div = d3.select(agent_divid)
-        var rows_div = agent_div.append("div").attr("class", "row")
+    deterdash.build_table_panel = function(table_container, title, heading_map, table_data) {
+            var table_div = table_container.append("div").classed("box box-solid box-primary", true)
 
-        var build_table = function(rows_div, title, heading_map, table_data) {
-            var table_div = rows_div.append("div").attr("class", "col-lg-12")
-                            .append("div").classed("panel panel-default", true)
-            table_div.append("div").classed("panel-heading", true).text(title)
-            var table = table_div.append("div").classed("panel-body", true)
+            var header = table_div.append("div").classed("box-header", true)
+
+            header.append("h3").classed("box-title", true).text(title)
+            header.append("div").classed("box-tools pull-right", true)
+                  .append("button").classed("btn btn-primary btn-sm", true).attr("data-widget", "collapse")
+                  .append("i").classed("fa-minus", true)
+
+            var table = table_div.append("div").classed("box-body", true)
                                       .append("div").classed("table-responsive", true)
                                       .append("table").classed("table", true) 
 
@@ -101,73 +111,57 @@ console.log('deterdash loaded.');
                                     }
                                     return d.value; 
                                 })
-        }
-
-        var init_heading_map = {Name: 'name', Type: 'type', Help: 'help'}
-        build_table(rows_div, "Intialization", init_heading_map, agent.variables)
-
-        var meth_heading_map = {Name: 'name', Arguments: 'args', Help: 'help'}
-        build_table(rows_div, "Methods", meth_heading_map, agent.method)
     }
 
-    // deterdash.spawn_horizon_graph = function(divid, nodename, agent, unit) {
-    //     console.log('spawn_horizon_graph called with: ', divid, nodename, agent, unit); 
+    deterdash.show_exe_agent = function(agent, agent_divid) {
+        var agent_div = d3.select(agent_divid)
+        var rows_div = agent_div.append("div").attr("class", "row")
 
-    //     var margin = {top: 10, right: 10, bottom: 10, left: 23},
-    //         width = 300,
-    //         height = 200 - margin.top - margin.bottom;
+        var table_div = rows_div.append("div").attr("class", "col-lg-12")
+        var init_heading_map = {Name: 'name', Type: 'type', Help: 'help'}
+        deterdash.build_table_panel(table_div, "Intialization", init_heading_map, agent.variables)
 
-    //     var context = cubism.context().step(1000).size(width);
-    //     var horizon = context.horizon().height(height); 
+        var table_div = rows_div.append("div").attr("class", "col-lg-12")
+        var meth_heading_map = {Name: 'name', Arguments: 'args', Help: 'help'}
+        deterdash.build_table_panel(table_div, "Methods", meth_heading_map, agent.method)
+    }
 
-    //     horizon.metric(get_node_data);
+    deterdash.make_text_box = function(divid, title_str, text) { 
+        var box = divid.append("div").append("div").classed("box box-solid box-primary", true)
 
-    //     d3.select("#" + divid).selectAll('.horizon').call(horizon.remove).remove();
+        var header = box.append("div").classed("box-header", true)
+        header.append("h3").classed("box-title", true).text(title_str)
+        header.append("div").classed("box-tools pull-right", true)
+              .append("button").classed("btn btn-primary btn-sm", true).attr("data-widget", "collapse")
+              .append("i").classed("fa-minus", true)
 
-    //     d3.select("#" + divid)
-    //             .selectAll(".horizon")
-    //             .data([nodename])
-    //             .enter()
-    //             .append("div")
-    //             .attr("class", "horizon")
-    //             .call(horizon);
+        box.append("div").classed("box-body", true).text(text)
+    }
 
-    //     d3.select("#" + divid).selectAll('.axis').remove();
+    deterdash.show_nodeinfo = function(nodeinfo, nodeinfo_id) {
+        var container = d3.select(nodeinfo_id)
+        var now = new Date()
+    
+        var uptime = new Date(now - (nodeinfo['uptime'] * 1000.0))
 
-    //     d3.select("#" + divid)
-    //         .append("div")
-    //         .attr("class", "axis")
-    //         .call(context.axis());
-    // 
-    //     function get_node_data(nodename) {
-    //         console.log('getting data for nodename ' + nodename);
-    //         return context.metric(function(start, stop, step, callback) {
-    //             var values = [];
-    //             var start = +start, stop = +stop;
-    //             var url = window.location.origin + "/api/horizon_chart/json?";
-    //             url += 'start=' + (start / 1000);
-    //             url += '&stop=' + (stop / 1000);
-    //             url += '&step=' + (step / 1000);
-    //             url += '&node=' + nodename;
-    //             url += '&metric=' + unit.data_key;
-    //             url += '&agent=' + agent.agent;
-    //             // console.log('api url: ' + url);
-    //             d3.json(url, function(error, json) {
-    //                 if (error) { 
-    //                     console.log('error', error);
-    //                     callback(error, []);
-    //                 }
-    //                 else if (! 'counts' in json) {
-    //                     callback('bad json data: ' + json, []);
-    //                 }
-    //                 else {
-    //                     values = json['counts'];
-    //                     callback(null, values);
-    //                 }
-    //             });
-    //         }, nodename);
-    //     }
-    // } // end of deterdash.spawn_horizon_graph
+        deterdash.make_text_box(container, "Uptime", function() {
+            return "Up Since: " + uptime + " (" + nodeinfo['uptime'] + " seconds)";
+        })
+
+        if (nodeinfo.users.length) { 
+            deterdash.make_text_box(container, "Logged In Users", function() {
+                return nodeinfo.users;
+            })
+        }
+
+        // We use the keys as the headings, but assert the order here. Not great.
+        var heading_map = {
+            Proto: "Proto", "Send-Q": "Send-Q", "Recv-Q": "Recv-Q", "Local Address": "Local Address",
+            "Foreign Address": "Foreign Address", State: "State", 
+            "PID/Program name": "PID/Program name"
+        };
+        deterdash.build_table_panel(container, "Open Ports", heading_map, nodeinfo.ports)
+    }
 
     deterdash.node_stats_panel = function(d3, divid, nodename) {
         console.log('node_stats_panel called for ' + nodename);
@@ -651,6 +645,436 @@ console.log('deterdash loaded.');
 
             }
     }
+    
+    deterdash. route_topology = function(agent_name, route_divid, node_panels_id, clear_routes_menu_id, 
+                                         clear_route_button_id, display_route_button_id, title_divid,
+                                         choose_nodes_divid) {
+            var win_w = $(route_divid).width(),
+                win_h = $(route_divid).height();
+            var margin = {top: 5, right: 5, bottom: 5, left: 5};
+
+            var node_rad = 10,
+                node_gap = 5;
+
+            var clear_all_routes_menu_entry = {id: "clear_all_routes",
+                                               text: "All Routes", 
+                                               color: null, 
+                                               src: null, 
+                                               dst: null, 
+                                               slot: -1};
+            var selected_path_nodes = [],
+                path_slot = -1,
+                choosing_path = false,
+                route_color = d3.scaleOrdinal(d3.schemeCategory10),
+                route_dropdown_menu = [clear_all_routes_menu_entry]
+
+            var newest_zoom = null;
+
+            var node = null,
+                link = null,
+                nodes = [],
+                links = [],
+                node_label = null;
+
+            var simulation = d3.forceSimulation()
+                .force("link", d3.forceLink()
+                    .distance(60)
+                    .strength(0.7)
+                    .id(function(d) { return d.id; }))
+                .force("collision", d3.forceCollide()
+                     .radius(function(d) { return node_rad+node_gap }).iterations(16))
+                .force("charge", d3.forceManyBody())
+                .force("center", d3.forceCenter(win_w/2, win_h/2))
+                .on("tick", ticked)
+
+            var svg = d3
+                .select(route_divid)
+                .append("svg")
+                .attr("cursor", "move")
+                .call(d3.zoom().scaleExtent([0.5, 10]).on("zoom", zoomed));
+
+            // build the arrow.
+            svg.append("svg:defs").selectAll("marker")
+                    .data(["end"])      // Different link/path types can be defined here
+                .enter().append("svg:marker")    // This section adds in the arrows
+                    .attr("id", String)
+                    .attr("viewBox", "0 -5 10 10")
+                    .attr("refX", 15)
+                    .attr("refY", -1.5)
+                    .attr("markerWidth", 6)
+                    .attr("markerHeight", 6)
+                    .attr("orient", "auto")
+                .append("path")
+                    .attr("d", "M0,-5L10,0L0,5");
+
+            d3.select(window).on("resize", resize);
+
+            var link_selection = svg.append("g").attr("class", "links");
+            var node_selection = svg.append("g").attr("class", "nodes");
+            var route_dropdown_menu_selection = d3.select(".clear_routes_dropdown");
+
+            resize();   // set initial size.
+
+            function resize() {
+                var win_w = $(route_divid).width(),
+                    win_h = $(route_divid).height();
+
+                svg.attr("width", win_w - margin.left - margin.right)
+                   .attr("height", win_h - margin.top - margin.bottom);
+            }
+
+            function zoomed() {
+                newest_zoom = d3.event.transform;
+                node_selection.selectAll(".node").attr("transform", newest_zoom); 
+                link_selection.selectAll("path").attr("transform", newest_zoom);
+            }
+
+            function dragstarted(d) {
+                if (!d3.event.active) simulation.alphaTarget(0.1).restart();
+                d.fx = d.x;
+                d.fy = d.y;
+            }
+
+            function dragged(d) {
+                d.fx = d3.event.x;
+                d.fy = d3.event.y;
+            }
+
+            function dragended(d) {
+                if (!d3.event.active) simulation.alphaTarget(0);
+                d.fx = null;
+                d.fy = null;
+            }
+
+            var exp_name_promise = new Promise(
+                function(resolve, reject) {
+                    d3.json(window.location.origin + '/api/exp_info',
+                        function(error, json) {
+                            if(error) reject(error); 
+                            else if (json.status !== 0) {
+                                // This can happen if the correct agent is not running.
+                                reject('server did not give us the exp info.');
+                            }
+                            else {
+                                console.log("got exp_info: ", json); 
+                                resolve(json);
+                            }
+                        }
+                    );
+                }
+            ).then(
+                function(expinfo) {
+                    $(title_divid).html("Experiment: <b>" + expinfo.project + " / "
+                        + expinfo.experiment + "</b>"); 
+                }, 
+                function(message, error) {
+                    $(title_divid).html("Topology"); 
+                    console.log(message, error);
+                }
+            );
+
+            var load_topology_promise = new Promise(
+                function(resolve, reject) {
+                    d3.json(window.location.origin + "/api/topology/" + agent_name, 
+                        function(error, json) {
+                            if (error) reject(error);
+                            else if (json.status !== 0) reject("server did not give the topology");
+                            else resolve(json)
+                        }
+                    );
+                }
+            ); 
+                
+            load_topology_promise.then(function load_topology(json) {
+                // build the nodes and links teh way the graph widget wants them
+                for(var i = 0; i < json['nodes'].length; i++) {
+                    var n = json['nodes'][i];
+                    nodes.push({name: n, id: i});
+                }
+                for(var i = 0; i <  json['edges'].length; i++) {
+                    var s = json['edges'][i][0]
+                    var t = json['edges'][i][1]
+                    var si = json['nodes'].indexOf(s);
+                    var ti = json['nodes'].indexOf(t);
+                    var name = s + '-' + t
+                    console.log('adding link', s, t, name);
+                    links.push({source: si, target: ti, name: name, linknum: null});
+                }
+
+                update_topo();
+                d3.select(display_route_button_id).classed("disabled", false); 
+            });
+
+            function remove_all_paths() {
+                console.log("removing all paths");
+                for(var i=0; i<links.length; i++) {
+                    if (links[i].hasOwnProperty('route')) {
+                        console.log("removing link: ", links[i]);
+                        links.splice(i, 1);
+                        i--;   // we just removed an element.
+                    }
+                }
+                for(var i=0; i<selected_path_nodes.length; i++) {
+                    delete selected_path_nodes[i];  // set slot to undefined.
+                }
+                route_dropdown_menu.splice(0, route_dropdown_menu.length);  // kill all menu items.
+                route_dropdown_menu.push(clear_all_routes_menu_entry);
+                update_topo();
+            }
+
+            function handle_clear_route(d) {
+                console.log("removing path:" , d); 
+                if (d.id == "clear_all_routes") {
+                    remove_all_paths();
+                    return;
+                }
+                for(var i=0; i<links.length; i++) {
+                    if (links[i].hasOwnProperty('route') && links[i].route === d.src + "-" + d.dst) {
+                        console.log("removing link: ", links[i]);
+                        links.splice(i, 1);
+                        i--;   // we just removed an element.
+                    }
+                }
+                delete selected_path_nodes[d.slot];  // set slot to undefined. 
+                var i = route_dropdown_menu.findIndex(function(x) { return x.slot == d.slot; });
+                if (i != -1) { 
+                    route_dropdown_menu.splice(i, 1);   // remove it here, will remove it from the menu.
+                } else {
+                    console.log("unable to find in drop down menu: ", d); 
+                }
+
+                update_topo();
+            }
+
+            function show_path(path_slot) {
+                var path_show_promise = new Promise(
+                    function(resolve, reject) {
+                        var url = window.location.origin + '/api/routing/path?';
+                        url += "src=" + selected_path_nodes[path_slot].src.name;
+                        url += "&dst=" + selected_path_nodes[path_slot].dst.name;
+                        d3.json(url, 
+                            function(error, json) {
+                                if (error) reject(error);
+                                else if (json.status !== 0) {
+                                    reject("Server could not find that path");
+                                }
+                                else {
+                                    console.log("Got path: ", json.path);
+                                    resolve(json);
+                                }
+                            }
+                        );
+                    }
+                );
+            
+                path_show_promise.then(
+                    function(json) {
+                        var path_nodes = json["path"]
+                        var route_name = path_nodes[0] + "-" + path_nodes[path_nodes.length-1]
+                        for(var i = 0; i < path_nodes.length-1; i++) {
+                            var s = path_nodes[i]
+                            var t = path_nodes[i+1]
+                            var si = simulation.nodes().findIndex(function(n) { return n.name == s; });
+                            var ti = simulation.nodes().findIndex(function(n) { return n.name == t; });
+                            var name = s + "-" + t
+                            console.log('adding route path link', si, ti, name, route_name);
+                            links.push({source: si, target: ti, name: name,
+                                linknum: path_slot, route: route_name});
+                        }
+                        var src = path_nodes[0],
+                            dst = path_nodes[path_nodes.length-1];
+                        route_dropdown_menu.push({
+                            id: src + dst + path_slot,
+                            text: src + " --> " + dst,
+                            src: src, dst: dst, slot: path_slot,
+                            color: route_color(path_slot)
+                        });
+                        d3.select(display_route_button_id).classed("disabled", false); 
+                        d3.select(".choose-nodes-message").remove()
+                        choosing_path = false;
+                        path_slot = -1;
+                        update_topo();
+                    },
+                    function(message, error) {
+                        console.log(message, error);
+                    }
+                );
+            }
+
+            function update_topo() {
+                console.log("updating topology");
+
+                // var link = link_selection.selectAll("path").data(links).enter()
+                var link = link_selection.selectAll("path").data(links)
+                var node = node_selection.selectAll(".node").data(nodes).enter().append("g").attr("class", "node")
+
+                // update link attrs for existing links.
+                link.attrs(function(d) { return link_attrs(d); }); 
+
+                // enter (new links) - create link DOM.
+                link.enter().append("path")
+                    .attr("class", "link")
+                    .attr("fill", "none")
+                    .attr("transform", newest_zoom);   // make sure to translate new links/paths.
+
+                node.append("circle")
+                    .attr("r", "6")
+                    .attr("fill", function(d) { return get_node_fill(d); })
+                    .attr("stroke", function(d) { return get_node_stroke(d); })
+                    .on("click", function(d) { click_node(d); })
+                    .call(d3.drag()
+                            .on("start", dragstarted)
+                            .on("drag", dragged)
+                            .on("end", dragended))
+
+                node.append("text")
+                    .attr("x", 12)
+                    .attr("dy", ".35em")
+                    .attr("font", "10px sans-serif")
+                    .attr("pointer-events", "none")
+                    .attr("fill", "black")
+                    .text(function(d) { return d.name })
+
+                node.on("mouseover", function(d) { set_highlight(d); })
+                    .on("mouseout", function(d) { exit_highlight(d); })
+
+                // remove links no longer in the DOM.
+                link.exit().remove(); 
+                node.exit().remove();
+
+                simulation.nodes(nodes);
+                simulation.force("link").links(links);
+                simulation.restart();
+
+                // "slot" is the unique ID for each menu entry as it maps to the index of the entry in the paths array.
+                var menu = route_dropdown_menu_selection
+                    .selectAll("li")
+                    .data(route_dropdown_menu, function(d) { return d.slot; })
+                // update existing menu entries with text/color. 
+                menu.selectAll("a")
+                    .style("background-color", function(d) { return d.color; })
+                    .text(function(d) { return d.text; })
+
+                // create and set new entries.
+                menu.enter()
+                    .append("li")
+                    .append("a")
+                        .attr("href", "#")
+                        .attr("id", function(d) { return d.id; })
+                        .style("background-color", function(d) { return d.color; })
+                        .text(function(d) { return d.text; })
+                        .on("click", handle_clear_route)
+
+                // remove missing entries.
+                menu.exit().remove()
+
+                // If there is only one menu entry (clear all), then disable the menu.
+                d3.select(clear_route_button_id)
+                    .classed("disabled", function() { return route_dropdown_menu.length == 1; })
+
+            };  // end of update_topo()
+
+            function get_node_stroke(d) {
+                return "blue";
+            }
+
+            function get_node_fill(d) {
+                if (d.hasOwnProperty("route_selected")) {
+                    return route_color(d.route_selected); 
+                }
+                return "#8be47c";
+            }
+
+            function click_node(d) {
+                if (!choosing_path) {
+                    return;
+                }
+                if (path_slot < 0) { // this is the first node clicked.
+                    path_slot = selected_path_nodes.findIndex(function(x) { return x === undefined; });
+                    if (path_slot >= 0) {
+                        selected_path_nodes[path_slot] = {src: d, dst: null};
+                    } else {  // create a new slot. 
+                        selected_path_nodes.push({src: d, dst: null}); 
+                        path_slot = selected_path_nodes.length - 1;
+                    }
+                    d.route_selected = path_slot;
+                    console.log("first path node: ", d.name); 
+                    var message = d3.select(".choose-nodes-message")
+                                    .text("Node " + d.name + " chosen. Choose node two."); 
+                } else {   // this is the second node chosen.
+                    console.log("route dst: ", d.name);
+                    selected_path_nodes[path_slot].dst = d;
+                    show_path(path_slot); 
+                    delete selected_path_nodes[path_slot].src.route_selected; // unselect the first node.
+                    path_slot = -1; 
+                }
+            }
+
+            function set_highlight(d) {
+                svg.style("cursor", "pointer");
+            }
+
+            function exit_highlight(d) {
+                svg.style("cursor", "move");
+            }
+
+            function link_stroke(d) {
+
+            }
+
+            function link_attrs(d) {
+                var atts = {};
+                if (d.linknum === null) {
+                    // Straight black slightly less opaque line.
+                    atts["d"] = "M" + d.source.x + "," + d.source.y + "L" + d.target.x + "," + d.target.y;
+                    atts["stroke"] = "black";
+                    atts["stroke-opacity"] = 0.25;
+                    atts["stroke-width"] = 1.0; 
+                } else {
+                    var dx = d.target.x - d.source.x,
+                        dy = d.target.x - d.source.y,
+                        dr = Math.sqrt(((d.linknum+1) * dx * dx) + ((d.linknum+1) * dy * dy));
+
+                    atts["d"] = "M" + d.source.x + "," + d.source.y + 
+                                "A" + dr + "," + dr + " 0 0,1 " + d.target.x + "," + d.target.y;
+
+
+                    atts["stroke"] = route_color(d.linknum);
+                    atts["stroke-opacity"] = 1.0;
+                    atts["stroke-width"] = 1.5; 
+                    atts["marker-end"] = "url(#end)";
+                }
+
+                return atts
+            }
+
+            function ticked() {
+                var link = link_selection.selectAll("path");
+                var node = node_selection.selectAll(".node");
+                var circle = node.selectAll("circle");
+
+                link.attrs(function(d) { return link_attrs(d); }); 
+
+                // node.attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; })
+                node.selectAll("circle").attr("cx", function(d) { return d.x; })
+                node.selectAll("circle").attr("cy", function(d) { return d.y; })
+                node.selectAll("text").attr("x", function(d) { return d.x + 8; })
+                node.selectAll("text").attr("y", function(d) { return d.y; })
+
+                circle.attr("fill", function(d) { return get_node_fill(d); })
+                      .attr("stroke", function(d) { return get_node_stroke(d); })
+            }
+
+            d3.select(display_route_button_id).on("click", function() {
+                d3.select(this).classed("disabled", true);
+                choosing_path = true;   // we are now choosing a path.
+                var mess_area = d3.select("#message_area")
+                    .append("div")
+                    .attr("class", "alert alert-success choose-nodes-message")
+
+                mess_area.append("text").text("Choose first node")
+            });
+    } // end route_topology
 
     return deterdash;
 })(window);
