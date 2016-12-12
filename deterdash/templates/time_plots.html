@@ -26,19 +26,20 @@
         <!-- /.panel-body -->
         <div class="panel-body">
             <div class="panel-body" id="time_plots_id"></div> 
-            <script type="text/javascript">
-                var time_plots = deterdash.spawn_time_plot(
-                        {{ agent|tojson }},         // using jinja2 tojson filter to convert to json.
-                        "#time_plots_id",
-                        "#chart_title",
-                        "#chart_units_dropdown",
-                        ".control-button-grp"); 
-                </script>
             </div> <!-- /#time_plots_id -->
         </div>
         <!-- /.panel-body -->
     </div>
 </div>
-<!-- /.col-lg-4 -->
+<script type="text/javascript">
+    var subtitle = "  {{agent.display}} ({{agent.table}})"
+    deterdash.set_title(".content-header", "fa-clock-o", "Time Plots", subtitle)
+    var time_plots = deterdash.spawn_time_plot(
+            {{ agent|tojson }},         // using jinja2 tojson filter to convert to json.
+            "#time_plots_id",
+            "#chart_title",
+            "#chart_units_dropdown",
+            ".control-button-grp"); 
+</script>
 {% endblock %}
 
