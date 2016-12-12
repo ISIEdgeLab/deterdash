@@ -1,6 +1,7 @@
 import logging
 import time
 import json
+import pymongo
 from db import magi_db
 
 log = logging.getLogger(__name__)
@@ -51,3 +52,38 @@ def get_exp_nodes():
 
     nodes = json.loads(cursor['nodes'])  # json encoded in the DB for some reason. In a json oriented DB no less.
     return nodes
+
+def get_node_info(name):
+    '''Return information about the node.'''
+    db = magi_db()
+    retval = {'name': name}
+    cursor = db.experiment_data.find({
+        'agent': 'node_stats_ports',
+        'host': name
+    }, {
+        '_id': False,
+        'ports': True,
+        'created': True
+    }).sort('created', pymongo.DESCENDING)
+
+    if cursor.count():
+        retval['ports'] = cursor[0]['ports'] 
+        retval['timestamp'] = cursor[0]['created']
+
+    cursor = db.experiment_data.find({
+        'agent': 'node_stats_users',
+        'host': name
+    }, {
+        '_id': False,
+        'uptime': True,
+        'users': True,
+        'created': True
+    }).sort('created', pymongo.DESCENDING)
+
+    if cursor.count():
+        log.debug('found uptime/users: {}'.format(cursor[0]))
+        retval['uptime'] = cursor[0]['uptime']
+        retval['users'] = cursor[0]['users']
+        retval['timestamp'] = cursor[0]['created']
+
+    return retval
