@@ -173,6 +173,73 @@ console.log('deterdash loaded.');
             "PID/Program name": "PID/Program name"
         };
         deterdash.build_table_panel(container, "Open Ports", heading_map, nodeinfo.ports)
+
+        var show_route_tables = new Promise(
+            function(resolve, reject) {
+                var url = window.location.origin + '/api/routing/' + nodeinfo.name
+                d3.json(url, 
+                    function(error, json) {
+                        if (error) reject(error);
+                        else if (json.status !== 0) {
+                            reject("No route table found for node " + agent.name)
+                        }
+                        else if(!'table' in json) {
+                            reject('No table data from server.')
+                        }
+                        else {
+                            console.log("Got route table")
+                            resolve(json);
+                        }
+                    }
+                );
+            }
+        );
+    
+        show_route_tables.then(
+            function(json) {
+                var tables = json["table"]
+                var heading_map = {Destination: 'dst', Gateway: 'gw', Interface: 'iface', Netmask: "netmask"}
+                deterdash.build_table_panel(container, 'Routing Table', heading_map, tables)
+            },
+            function(message, error) {
+                console.log(message, error);
+            }
+        );
+
+        var show_running_agents = new Promise(
+            function(resolve, reject) {
+                var url = window.location.origin + '/api/' + nodeinfo.name + '/agents'
+                d3.json(url, 
+                    function(error, json) {
+                        if (error) reject(error);
+                        else if (json.status !== 0) {
+                            reject("No agents found for node " + agent.name)
+                        }
+                        else if(!'agents' in json) {
+                            reject('No agents data from server.')
+                        }
+                        else {
+                            console.log("Got route table")
+                            resolve(json);
+                        }
+                    }
+                );
+            }
+        );
+    
+        show_running_agents.then(
+            function(json) {
+                var agents = []
+                json["agents"].forEach(function(a) { agents.push(a.display + " (" + a.agent + ")") })
+                
+                deterdash.make_text_box(container, "Running Magi Agents", function() {
+                    return agents.join(',   ')
+                })
+            },
+            function(message, error) {
+                console.log(message, error);
+            }
+        );
     }
 
     deterdash.node_stats_panel = function(d3, divid, nodename) {
