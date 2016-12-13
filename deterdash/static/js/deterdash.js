@@ -125,9 +125,33 @@ console.log('deterdash loaded.');
                                 })
     }
 
+    deterdash.make_key_value_box = function(divid, the_title, kvmap, data) { 
+        var box = divid.append("div").classed("box box-solid box-primary", true)
+        var header = box.append("div").classed("box-header", true)
+        var body = box.append("div").classed("box-body", true)
+
+        header.append("h3").classed("box-title", true).text(the_title)
+
+        header.append("div").classed("box-tools pull-right", true)
+            .append("button").classed("btn btn-primary btn-sm", true)
+            .attr("data-widget", "collapse")
+            .append("i").classed("fa-minus", true)
+
+        var table = body.append("div").classed("dl-horizontal", "true")
+
+        for (var k in kvmap) { 
+            table.append("dt").text(kvmap[k])
+            table.append("dd").text(data[k])
+        }
+    }
+
     deterdash.show_exe_agent = function(agent, agent_divid) {
         var agent_div = d3.select(agent_divid)
         var rows_div = agent_div.append("div").attr("class", "row")
+
+        var about = rows_div.append("div").attr("class", "col-lg-12")
+        var kvmap = {display: "Agent", description: "About", name: "Name", magi_version: "Magi Version"}
+        deterdash.make_key_value_box(about, "About", kvmap, agent)
 
         var table_div = rows_div.append("div").attr("class", "col-lg-12")
         var init_heading_map = {Name: 'name', Type: 'type', Help: 'help'}

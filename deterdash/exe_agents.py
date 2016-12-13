@@ -20,7 +20,8 @@ def get_executable_agents():
                     'display': agent['display'],
                     'description': agent['description'],
                     'variables': agent['variables'],
-                    'method': agent['method']
+                    'method': agent['method'],
+                    'magi_version': agent['magi_version']
                 })
 
     return agents
