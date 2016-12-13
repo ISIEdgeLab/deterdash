@@ -15,11 +15,20 @@ variables:
   - name: nodeDescription
     help: free form text describing the node
     type: string
+  - name: truncate
+    help: If true, truncate Magi database records on start or restart of the agent.
+    type: boolean
+  - name: recordLimit
+    help: Limit the number of records about the node to the number given.
+    type: integer
+  - name: visualize
+    help: If true, make stats available to the situational awareness application.
+    type: boolean
 method: 
   - name: startCollection
     help: Start collecting stats about this node.
-    args: None
+    args: { }
   - name: stopCollection
-    help: Stop collecting stats
-    args: None
+    help: Stop collecting stats about this node.
+    args: { }
 
