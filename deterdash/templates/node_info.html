@@ -1,0 +1,27 @@
+{% extends "dashboard.html" %}
+
+{% block content %}
+<div class="col-lg-12">
+    <div class="callout callout-success" id="ni_timestamp_message">
+    </div>
+</div>
+<div class="col-lg-12" id="nodeinfo_id">
+</div>
+<script type="text/javascript">
+    deterdash.set_title(".content-header", "fa-desktop", "Experiment Nodes", "{{ nodeinfo.name }}")
+    var message = d3.select("#ni_timestamp_message")
+
+    {% if nodeinfo.timestamp is defined %}
+        message.text(function() { 
+            var ts = new Date({{ nodeinfo.timestamp }} * 1000.0)
+            return "Node Status as of " + ts
+        })
+        var exe_agent = deterdash.show_nodeinfo({{ nodeinfo|tojson }}, "#nodeinfo_id"); 
+    {% else %}
+        message.classed("callout-success", false)
+               .classed("callout-danger", true)
+               .text("The Node Stats agent is not running on node {{nodeinfo.name}}.")
+    {% endif %}
+</script>
+{% endblock %}
+
