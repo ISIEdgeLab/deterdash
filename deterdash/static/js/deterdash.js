@@ -139,7 +139,7 @@ console.log('deterdash loaded.');
     }
 
     deterdash.make_text_box = function(divid, title_str, text) { 
-        var box = divid.append("div").append("div").classed("box box-solid box-primary", true)
+        var box = divid.append("div").classed("box box-solid box-primary", true)
 
         var header = box.append("div").classed("box-header", true)
         header.append("h3").classed("box-title", true).text(title_str)
