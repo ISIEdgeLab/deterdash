@@ -217,16 +217,20 @@ console.log('deterdash loaded.');
         var kvmap = {display: "Agent", description: "About", name: "Name", magi_version: "Magi Version"}
         deterdash.make_key_value_box(about, "About", kvmap, agent)
 
-        var table_div = rows_div.append("div").attr("class", "col-lg-12")
-        var init_heading_map = {Name: 'name', Type: 'type', Default: 'default', Help: 'help'}
-        deterdash.build_table_panel(table_div, "Intialization", init_heading_map, agent.variables)
+        if (agent.variables && agent.variables.length) { 
+            var table_div = rows_div.append("div").attr("class", "col-lg-12")
+            var init_heading_map = {Name: 'name', Type: 'type', Default: 'default', Help: 'help'}
+            deterdash.build_table_panel(table_div, "Intialization", init_heading_map, agent.variables)
+        }
 
-        var table_div = rows_div.append("div").attr("class", "col-lg-12")
-        var meth_heading_map = {Name: 'name', Arguments: 'args', Help: 'help'}
-        deterdash.build_table_panel(table_div, "Methods", meth_heading_map, agent.method)
+        if (agent.method && agent.method.length) { 
+            var table_div = rows_div.append("div").attr("class", "col-lg-12")
+            var meth_heading_map = {Name: 'name', Arguments: 'args', Help: 'help'}
+            deterdash.build_table_panel(table_div, "Methods", meth_heading_map, agent.method)
 
-        var init_input_div  = rows_div.append("div").attr("class", "col-lg-12")
-        deterdash.build_input_table(init_input_div, "Initialization", agent.variables, nodes)
+            var init_input_div  = rows_div.append("div").attr("class", "col-lg-12")
+            deterdash.build_input_table(init_input_div, "Initialization", agent.variables, nodes)
+        }
     }
 
     deterdash.make_text_box = function(divid, title_str, text) { 
