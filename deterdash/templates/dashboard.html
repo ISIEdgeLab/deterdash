@@ -21,11 +21,13 @@
         <script src="https://d3js.org/d3.v4.min.js"></script>
         <script src="https://d3js.org/d3-selection-multi.v0.4.min.js"></script>
 
-        <!-- DETER Code -->
+        <link href="{{ url_for('static', filename='css/select2.min.css') }}" rel="stylesheet" /> 
+
         <script src="{{ url_for('static', filename='js/deterdash.js') }}"></script>
         <script>
             deterdash.load_experiment_info(".experiment_id", ".experiment_swapper", ".experiment_URL")
         </script>
+        
     </head>
     <body class="skin-black">
         <!-- header logo: style can be found in header.less -->
@@ -255,6 +257,7 @@
         <script src="{{ url_for('static', filename='AdminLTE/js/jquery-ui-1.10.3.min.js') }}" type="text/javascript"></script>
         <!-- Bootstrap -->
         <script src="{{ url_for('static', filename='AdminLTE/js/bootstrap.min.js') }}" type="text/javascript"></script>
+        <script src="{{ url_for('static', filename='js/select2.min.js') }}" type="text/javascript"></script>
         <!-- Sparkline -->
         <script src="{{ url_for('static', filename='AdminLTE/js/plugins/sparkline/jquery.sparkline.min.js') }}" type="text/javascript"></script>
         <!-- jvectormap -->
@@ -265,5 +268,10 @@
 
         <!-- AdminLTE App -->
         <script src="{{ url_for('static', filename='AdminLTE/js/AdminLTE/app.js') }}" type="text/javascript"></script>
+
+        <script>
+            $('.select').select2();
+            $('.select2').select2();
+        </script>
     </body>
 </html>
