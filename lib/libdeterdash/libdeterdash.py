@@ -9,6 +9,8 @@
 import logging
 import time
 import pymongo
+import os.path
+import yaml
 
 from magi.util import database
 from magi.testbed import testbed
@@ -23,6 +25,9 @@ class DeterDashboard(object):
     # The supported datatypes
     time_plot_type = 'time_plot'
     force_directed_graph_type = 'force_directed_graph'
+
+    # Where we keep IDLs
+    viz_idl_table = 'viz_data_idl'
 
     def __init__(self):
         pass
@@ -82,3 +87,21 @@ class DeterDashboard(object):
             return cursor[0]['node_key'], cursor[0]['edges_key'], cursor[0]['extra_keys']
 
         return None, None, None
+
+    def register_agent(self, idlpath):
+        '''Given a path to an agents' IDL, register that agent such that it shows up as an executable agent in the GUI.'''
+        log.info('Attempting to register agent via IDL: {}'.format(idlpath))
+        if not os.path.exists(idlpath) or not os.path.isfile(idlpath):
+            log.error('bad file/path for IDL given to libdeterdash.')
+            return False
+
+        try:
+            with open(idlpath) as fd:
+                idl = yaml.safe_load(fd)
+        except Exception as e:
+            log.error('Unable to read IDL file {}: {}'.format(e, idlpath))
+            return False
+
+        idl_collection = database.getCollection(DeterDashboard.viz_idl_table)
+        idl_collection.insert(idl)    # Should this be broken out and/or stored in the DB differently? 
+                                      # How are we going to filter dups inserted by other nodes?
