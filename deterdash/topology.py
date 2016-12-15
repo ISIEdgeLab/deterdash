@@ -26,7 +26,7 @@ def _get_topo_keys_in_a_stupid_way(agent):
 
 def get_topology(agent):
     # grab the topo from the magi inserted data.
-    dash = DeterDashboard()
+    # dash = DeterDashboard()
     log.debug('getting topo table keys for agent {}'.format(agent))
     # node_key, edge_key, extra_keys = dash.get_topology_keys(agent)
     node_key, edge_key, extra_keys = _get_topo_keys_in_a_stupid_way(agent)
