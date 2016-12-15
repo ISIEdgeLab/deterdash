@@ -154,7 +154,7 @@ console.log('deterdash loaded.');
         deterdash.make_key_value_box(about, "About", kvmap, agent)
 
         var table_div = rows_div.append("div").attr("class", "col-lg-12")
-        var init_heading_map = {Name: 'name', Type: 'type', Help: 'help'}
+        var init_heading_map = {Name: 'name', Type: 'type', Default: 'default', Help: 'help'}
         deterdash.build_table_panel(table_div, "Intialization", init_heading_map, agent.variables)
 
         var table_div = rows_div.append("div").attr("class", "col-lg-12")
