@@ -208,5 +208,6 @@ def inject_dashboard_variables():
 
     exe_agents = get_executable_agents()
     nodes = get_exp_nodes()
+    nodes.sort()
 
     return dict(graphables=ui_types, exe_agents=exe_agents, nodes=nodes)

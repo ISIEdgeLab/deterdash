@@ -17,7 +17,8 @@
     deterdash.set_title(".content-header", "fa-gear", "Executable Agents", " {{agent.display}}")
     var exe_agent = deterdash.show_exe_agent(
             {{ agent|tojson }},         // using jinja2 tojson filter to convert to json.
-            "#exe_agent_divid"); 
+            "#exe_agent_divid",
+            {{ nodes|tojson }});
 </script>
 {% endblock %}
 

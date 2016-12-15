@@ -35,16 +35,21 @@ def get_executable_agents():
         '_id': False,
     }).distinct('name')
 
+    # Now for all agents, read the newest IDL in the DB we can pind.
     for name in names:
-        agent = db.experiment_data.find_one({
+        cursor = db.experiment_data.find({
             'agent': DeterDashboard.viz_idl_table,
             'name': name
         }, {
             '_id': False
-        })
-        if agent and 'name' in agent and not agent['name'] in seen:
-            agents.append(agent)
-            seen.append(agent)
+        }).sort('created', pymongo.DESCENDING).limit(1)
+
+        if cursor.alive and cursor.count():
+            agent = cursor[0]
+            if agent and 'name' in agent and not agent['name'] in seen:
+                log.info('found agent in db: {}'.format(agent))
+                agents.append(agent)
+                seen.append(agent)
 
     return agents
 

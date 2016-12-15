@@ -76,6 +76,105 @@ console.log('deterdash loaded.');
             });
     }
 
+    // Given a divid, data, and a column heading map to the data, build a table.
+    deterdash.build_table = function(divid, heading_map, table_data) {
+        var table = divid.append("div").classed("table-responsive", true)
+                    .append("table").classed("table", true) 
+
+        var thead = table.append("thead")
+        var cols = Object.keys(heading_map)
+
+        thead.append("tr")
+            .selectAll("th")
+            .data(cols)
+            .enter()
+            .append("th")
+            .text(function(d) { return d; })
+
+        var tbody = table.append("tbody")
+
+        // a row for each datapoint.
+        var rows = tbody.selectAll("tr")
+            .data(table_data)
+            .enter()
+            .append("tr")
+
+        // now fill in the rows.
+        var cells = rows.selectAll("td")
+            .data(function(row) {
+                return cols.map(function(col) {
+                    if (heading_map) 
+                        return {col: col, value: row[heading_map[col]]};
+                    else
+                        return {col: col, value: row[col]}
+                })
+            })
+            .enter()
+            .append("td")
+            .text(function(d) {
+                if (Array.isArray(d.value)) {
+                    // return deterdash.build_table(this, null, d);
+                    return JSON.stringify(d.value)
+                } else if (typeof d.value === "object") {
+                    return ""
+                }
+                return d.value; 
+            })
+    }
+
+    deterdash.build_input_td = function(selection, d, nodes) { 
+        if (d.type === "nodelist") {
+            var nodelist = selection.append("select")
+                .classed("form-control select2", true)
+                .attr("multiple", "multiple")
+                .attr("data-placeholder", "Choose nodes...")
+                .attr("style", "width: 100%")
+                .attr('tokenSeparators', "[',', ' ']")
+                .attr('tags', 'true')
+            nodelist.selectAll("option")
+                .data(nodes)
+                .enter()
+                .append("option")
+                    .text(function(d) { return d })
+        } else {
+            var input = selection.append("input")
+                .attr("type", "text")
+                .classed("form-control", true)
+
+            if (d.default) {
+                input.attr('value', d.default)
+            } else {
+                input.attr("placeholder", "Enter value...")
+            }
+        }
+    }
+
+    deterdash.build_input_table = function(divsel, the_title, data, nodes) {
+        var table = divsel.append("div").classed("table-responsive", true)
+                    .append("table").classed("table", true) 
+
+        var thead = table.append("thead")
+
+        thead.append("tr")
+            .selectAll("th")
+            .data(['Variable', 'Value'])
+            .enter()
+            .append("th")
+            .text(function(d) { return d; })
+
+        var tbody = table.append("tbody")
+        var onnodes = tbody.append("tr")
+        onnodes.append("td").text("Run on nodes")
+        deterdash.build_input_td(onnodes, {type: "nodelist"}, nodes)
+
+        data.forEach(function(d) { 
+            var row = tbody.append("tr")
+            row.append("td").text(d['name'])
+            deterdash.build_input_td(row, d, nodes)
+        })
+    }
+
+    // Wrap a table in a box/panel with the given title. 
     deterdash.build_table_panel = function(table_container, title, heading_map, table_data) {
             var table_div = table_container.append("div").classed("box box-solid box-primary", true)
 
@@ -86,43 +185,8 @@ console.log('deterdash loaded.');
                   .append("button").classed("btn btn-primary btn-sm", true).attr("data-widget", "collapse")
                   .append("i").classed("fa-minus", true)
 
-            var table = table_div.append("div").classed("box-body", true)
-                                      .append("div").classed("table-responsive", true)
-                                      .append("table").classed("table", true) 
-
-            var thead = table.append("thead")
-            var cols = Object.keys(heading_map)
-
-            thead.append("tr")
-                 .selectAll("th")
-                 .data(cols)
-                 .enter()
-                 .append("th")
-                     .text(function(d) { return d; })
-
-            var tbody = table.append("tbody")
-
-            // a row for each datapoint.
-            var rows = tbody.selectAll("tr")
-                             .data(table_data)
-                             .enter()
-                             .append("tr")
-
-            // now fill in the rows.
-            var cells = rows.selectAll("td")
-                            .data(function(row) {
-                                return cols.map(function(col) {
-                                    return {col: col, value: row[heading_map[col]]};
-                                })
-                            })
-                            .enter()
-                            .append("td")
-                                .text(function(d) { 
-                                    if (typeof d.value === "object") {
-                                        return "";
-                                    }
-                                    return d.value; 
-                                })
+            var tdiv = table_div.append("div").classed("box-body", true)
+            deterdash.build_table(tdiv, heading_map, table_data)
     }
 
     deterdash.make_key_value_box = function(divid, the_title, kvmap, data) { 
@@ -145,7 +209,7 @@ console.log('deterdash loaded.');
         }
     }
 
-    deterdash.show_exe_agent = function(agent, agent_divid) {
+    deterdash.show_exe_agent = function(agent, agent_divid, nodes) {
         var agent_div = d3.select(agent_divid)
         var rows_div = agent_div.append("div").attr("class", "row")
 
@@ -160,6 +224,9 @@ console.log('deterdash loaded.');
         var table_div = rows_div.append("div").attr("class", "col-lg-12")
         var meth_heading_map = {Name: 'name', Arguments: 'args', Help: 'help'}
         deterdash.build_table_panel(table_div, "Methods", meth_heading_map, agent.method)
+
+        var init_input_div  = rows_div.append("div").attr("class", "col-lg-12")
+        deterdash.build_input_table(init_input_div, "Initialization", agent.variables, nodes)
     }
 
     deterdash.make_text_box = function(divid, title_str, text) { 
