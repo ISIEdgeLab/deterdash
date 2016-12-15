@@ -1,28 +1,50 @@
 import logging
 import yaml
-from os.path import join, isfile
+import pymongo
+from db import magi_db
+from os.path import join, isfile, exists, isdir
 from os import listdir
+from libdeterdash import DeterDashboard
 
 log = logging.getLogger(__name__)
 
 def get_executable_agents():
+    '''Load all IDLs found in the local ./agents directory. Also look in the database viz tables for
+    agents which have registered themselves.'''
     agents = []
-    idl_dir = join('.', 'agents')
+    seen = []
 
-    for fl in listdir(idl_dir):
-        f = join(idl_dir, fl)
-        if isfile(f) and f.endswith('idl'):
-            with open(f) as fd:
-                agent = yaml.safe_load(fd)
-                log.debug('Read exe agent {}'.format(agent['name']))
-                agents.append({
-                    'name': agent['name'],
-                    'display': agent['display'],
-                    'description': agent['description'],
-                    'variables': agent['variables'],
-                    'method': agent['method'],
-                    'magi_version': agent['magi_version']
-                })
+    # read locally loadable IDLs. 
+    idl_dir = join('.', 'agents')   # GTL - this should be configurable, passed in on the cmd line or something.
+
+    if exists(idl_dir) and isdir(idl_dir):
+        for fl in listdir(idl_dir):
+            f = join(idl_dir, fl)
+            if isfile(f) and f.endswith('idl'):
+                with open(f) as fd:
+                    agent = yaml.safe_load(fd)
+                    log.debug('Read exe agent {}'.format(agent['name']))
+                    agents.append(agent)
+                    seen.append(agent['name'])
+
+    # read IDLs stored in the DB.
+    db = magi_db()
+    names = db.experiment_data.find({
+        'agent': DeterDashboard.viz_idl_table
+    }, {
+        '_id': False,
+    }).distinct('name')
+
+    for name in names:
+        agent = db.experiment_data.find_one({
+            'agent': DeterDashboard.viz_idl_table,
+            'name': name
+        }, {
+            '_id': False
+        })
+        if agent and 'name' in agent and not agent['name'] in seen:
+            agents.append(agent)
+            seen.append(agent)
 
     return agents
 
