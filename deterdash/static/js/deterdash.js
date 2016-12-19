@@ -136,6 +136,10 @@ console.log('deterdash loaded.');
                 .enter()
                 .append("option")
                     .text(function(d) { return d })
+        } else if (d.type == "boolean") { 
+            var binput = selection.append("select").classed("form-control", true)
+            binput.append("option").text("true")
+            binput.append("option").text("false")
         } else {
             var input = selection.append("input")
                 .attr("type", "text")
