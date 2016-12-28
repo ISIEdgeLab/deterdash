@@ -122,10 +122,11 @@ console.log('deterdash loaded.');
             })
     }
 
-    deterdash.build_input_td = function(selection, d, key, nodes) { 
+    deterdash.build_keyvalue_input_entry = function(selection, key_attr, d, key, nodes) { 
         if (d.type === "nodelist") {
             var nodelist = selection.append("select")
-                .classed("form-control select2 agent_input", true)
+                .classed("form-control select2", true)
+                .attr(key_attr, key)
                 .attr("multiple", "multiple")
                 .attr("data-placeholder", "Choose nodes...")
                 .attr("style", "width: 100%")
@@ -139,14 +140,15 @@ console.log('deterdash loaded.');
                     .text(function(d) { return d })
         } else if (d.type == "boolean") { 
             var binput = selection.append("select")
-                .classed("form-control agent_input", true).attr('key', key)
+                .classed("form-control", true)
+                .attr(key_attr, key)
             binput.append("option").text("true")
             binput.append("option").text("false")
         } else {
             var input = selection.append("input")
                 .attr("type", "text")
-                .attr('key', key)
-                .classed("form-control agent_input", true)
+                .attr(key_attr, key)
+                .classed("form-control", true)
 
             if (d.default) {
                 input.attr('value', d.default)
@@ -156,7 +158,7 @@ console.log('deterdash loaded.');
         }
     }
 
-    deterdash.build_input_table = function(divsel, the_title, table_class, data, nodes) {
+    deterdash.build_keyvalue_input_table = function(divsel, the_title, table_class, key_attr, data, nodes) {
         var table = divsel.append("div").classed("table-responsive ", true)
                     .append("table").classed("table " + table_class, true) 
 
@@ -172,13 +174,27 @@ console.log('deterdash loaded.');
         var tbody = table.append("tbody")
         var onnodes = tbody.append("tr")
         onnodes.append("td").text("Run on nodes")
-        deterdash.build_input_td(onnodes, {type: "nodelist"}, 'run_on_nodes', nodes)
+        deterdash.build_keyvalue_input_entry(onnodes, key_attr, {type: "nodelist"}, 'run_on_nodes', nodes)
 
         data.forEach(function(d) { 
             var row = tbody.append("tr")
             row.append("td").text(d['name'])
-            deterdash.build_input_td(row, d, d['name'], nodes)
+            var input = row.append("td")
+            deterdash.build_keyvalue_input_entry(input, key_attr, d, d['name'], nodes)
         })
+    }
+
+    deterdash.get_keyvalue_table_values = function(divid, key_attr) {
+        var keyvalue = {}
+        $(divid + " [" + key_attr + "]").each(function() {
+            var key = this.getAttribute(key_attr)
+            if ($(this).is(".select2")) { 
+                keyvalue[key] = $(this).select2().val()
+            } else {
+                keyvalue[key] = this.value
+            }
+        })
+        return keyvalue
     }
 
     // Wrap a table in a box/panel with the given title. 
@@ -236,14 +252,16 @@ console.log('deterdash loaded.');
             deterdash.build_table_panel(table_div, "Methods", meth_heading_map, agent.method)
 
             var init_input_div  = rows_div.append("div").attr("class", "col-lg-12")
-            deterdash.build_input_table(init_input_div, "Initialization", "agent_init_data", agent.variables, nodes)
+            deterdash.build_keyvalue_input_table(init_input_div, "Initialization", "agent_init_data", "value_key", agent.variables, nodes)
 
             rows_div.append("button")
                 .classed("btn btn-block btn-primary", true)
                 .attr("type", "button")
                 .text("Run startCollection()")
                 .on("click", function(d) { 
-                    var aal = deterdash.generate_aal(init_input_div)
+                    var kvs = deterdash.get_keyvalue_table_values(".agent_init_data", "value_key")
+                    console.log("kvs: ", kvs)
+                    var aal = deterdash.generate_aal(kvs)
                     console.log('aal: ', aal)
                     console.log('aal: ', JSON.stringify(aal))
                     deterdash.execute_aal(aal)
@@ -254,13 +272,16 @@ console.log('deterdash loaded.');
     deterdash.execute_aal = function(aal) {
     }
 
-    deterdash.generate_aal = function(init_input_div) { 
+    deterdash.generate_aal = function(init_args) { 
         var group_name = 'group_name' 
-        var agent_name = 'agent_' + Math.random().toString(2, 8) 
-        var run_on_nodes = ['traf11', 'traf21', 'traf31']
+        var agent_name = 'agent_' + Math.random().toString(16).slice(2, 10)
         var stream_name = 'main'
-        var exec_args = {one: 1, two: 2, three: 3}
         var agent_path = '/users/glawler/src/edgect/magi/agents/pycurl_client'
+
+        var run_on_nodes = init_args['run_on_nodes']
+        delete init_args['run_on_nodes']
+        var exec_args = init_args
+
 
         var aal = {}
         aal['streamstarts'] = [stream_name]
