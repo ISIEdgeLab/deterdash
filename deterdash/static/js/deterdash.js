@@ -122,28 +122,31 @@ console.log('deterdash loaded.');
             })
     }
 
-    deterdash.build_input_td = function(selection, d, nodes) { 
+    deterdash.build_input_td = function(selection, d, key, nodes) { 
         if (d.type === "nodelist") {
             var nodelist = selection.append("select")
-                .classed("form-control select2", true)
+                .classed("form-control select2 agent_input", true)
                 .attr("multiple", "multiple")
                 .attr("data-placeholder", "Choose nodes...")
                 .attr("style", "width: 100%")
                 .attr('tokenSeparators', "[',', ' ']")
                 .attr('tags', 'true')
+                .attr('key', key)
             nodelist.selectAll("option")
                 .data(nodes)
                 .enter()
                 .append("option")
                     .text(function(d) { return d })
         } else if (d.type == "boolean") { 
-            var binput = selection.append("select").classed("form-control", true)
+            var binput = selection.append("select")
+                .classed("form-control agent_input", true).attr('key', key)
             binput.append("option").text("true")
             binput.append("option").text("false")
         } else {
             var input = selection.append("input")
                 .attr("type", "text")
-                .classed("form-control", true)
+                .attr('key', key)
+                .classed("form-control agent_input", true)
 
             if (d.default) {
                 input.attr('value', d.default)
@@ -153,9 +156,9 @@ console.log('deterdash loaded.');
         }
     }
 
-    deterdash.build_input_table = function(divsel, the_title, data, nodes) {
-        var table = divsel.append("div").classed("table-responsive", true)
-                    .append("table").classed("table", true) 
+    deterdash.build_input_table = function(divsel, the_title, table_class, data, nodes) {
+        var table = divsel.append("div").classed("table-responsive ", true)
+                    .append("table").classed("table " + table_class, true) 
 
         var thead = table.append("thead")
 
@@ -169,12 +172,12 @@ console.log('deterdash loaded.');
         var tbody = table.append("tbody")
         var onnodes = tbody.append("tr")
         onnodes.append("td").text("Run on nodes")
-        deterdash.build_input_td(onnodes, {type: "nodelist"}, nodes)
+        deterdash.build_input_td(onnodes, {type: "nodelist"}, 'run_on_nodes', nodes)
 
         data.forEach(function(d) { 
             var row = tbody.append("tr")
             row.append("td").text(d['name'])
-            deterdash.build_input_td(row, d, nodes)
+            deterdash.build_input_td(row, d, d['name'], nodes)
         })
     }
 
@@ -233,8 +236,58 @@ console.log('deterdash loaded.');
             deterdash.build_table_panel(table_div, "Methods", meth_heading_map, agent.method)
 
             var init_input_div  = rows_div.append("div").attr("class", "col-lg-12")
-            deterdash.build_input_table(init_input_div, "Initialization", agent.variables, nodes)
+            deterdash.build_input_table(init_input_div, "Initialization", "agent_init_data", agent.variables, nodes)
+
+            rows_div.append("button")
+                .classed("btn btn-block btn-primary", true)
+                .attr("type", "button")
+                .text("Run startCollection()")
+                .on("click", function(d) { 
+                    var aal = deterdash.generate_aal(init_input_div)
+                    console.log('aal: ', aal)
+                    console.log('aal: ', JSON.stringify(aal))
+                    deterdash.execute_aal(aal)
+            })
         }
+    }
+
+    deterdash.execute_aal = function(aal) {
+    }
+
+    deterdash.generate_aal = function(init_input_div) { 
+        var group_name = 'group_name' 
+        var agent_name = 'agent_' + Math.random().toString(2, 8) 
+        var run_on_nodes = ['traf11', 'traf21', 'traf31']
+        var stream_name = 'main'
+        var exec_args = {one: 1, two: 2, three: 3}
+        var agent_path = '/users/glawler/src/edgect/magi/agents/pycurl_client'
+
+        var aal = {}
+        aal['streamstarts'] = [stream_name]
+
+        aal['groups'] = {}
+        aal['groups'][group_name] = run_on_nodes
+
+        aal['agents'] = {}
+        aal['agents'][agent_name] = {
+            group: group_name,
+            path: agent_path,
+            execargs: exec_args
+        }
+
+        aal['eventstreams'] = {}
+        aal['eventstreams'][stream_name] = [{
+            type: 'event',
+            agent: agent_name,
+            method: 'startCollection',
+            args: {},
+            trigger: 'startCollectionStarted'
+        } , {
+            type: 'trigger',
+            triggers: ['startCollectionStarted']
+        }]
+
+        return(aal)
     }
 
     deterdash.make_text_box = function(divid, title_str, text) { 
@@ -783,7 +836,7 @@ console.log('deterdash loaded.');
                     y_scale.domain([0,1]);  // shrug.    
                 }
 
-                yaxis.call(d3.axisLeft(y_scale).tickFormat(d3.format('.0s')))
+                yaxis.call(d3.axisLeft(y_scale).tickFormat(d3.format(',.2s')))
 
                 xaxis.transition()
                     .duration(duration)
