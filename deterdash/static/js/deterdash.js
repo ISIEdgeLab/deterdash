@@ -297,12 +297,12 @@ console.log('deterdash loaded.');
             .append("div").classed("btn-group control-btn-grp", true)
 
         dd_btn_group
-            .append("button").classed("btn btn-default btn-xs", true)
+            .append("button").classed("btn btn-primary btn-xs", true)
             .text("Add Pause to Stream")
             .on("click", function() { add_pause_to_stream(ae_timeline) })
 
         dd_btn_group
-            .append("button").classed("btn btn-default btn-xs dropdown-toggle", true)
+            .append("button").classed("btn btn-primary btn-xs dropdown-toggle", true)
             .attr("data-toggle", "dropdown")
             .text("Add Method to Stream")
 
@@ -333,9 +333,14 @@ console.log('deterdash loaded.');
             var agent_method = timeline.append("li")
             agent_method.append("i").classed("fa fa-bolt bg-green", true)
             var agent_method_item = agent_method.append("div").classed("timeline-item", true)
-            agent_method_item
+            var header = agent_method_item
                 .append("h3").classed("timeline-header", true)
                 .text(d.name)
+            header.append("button").classed("btn btn-primary btn-xs pull-right", true)
+                .text("Remove")
+                .on("click", function() { 
+                    agent_method.remove()
+                })
             var agent_method_body = agent_method_item.append("div").classed("timeline-body", true)
             deterdash.build_keyvalue_input_table(agent_method_body, "agent_method_" + d.name, 
                 "value_key", d.args, [])
@@ -343,8 +348,19 @@ console.log('deterdash loaded.');
         }
 
         function add_pause_to_stream(timeline) { 
-            timeline.append("li").classed("time-label", true)
-                .append("span").classed("bg-red", true).text("Pause")
+            var pause_div = timeline.append("li")
+            pause_div.append("i").classed("fa fa-pause bg-red", true)
+            var pause_item = pause_div.append("div").classed("timeline-item", true)
+            var header = pause_item.append("h3").classed("timeline-header", true).text("Pause Stream")
+            header.append("button").classed("btn btn-primary btn-xs pull-right", true)
+                .text("Remove")
+                .on("click", function() { 
+                    pause_div.remove()
+                })
+            var pause_body = pause_item.append("div").classed("timeline-body", true)
+            var pause_args = [{name: "Interval", type: "integer"}]
+            deterdash.build_keyvalue_input_table(pause_body, "stream_pause", 
+                "value_key", pause_args, [])
         }
     }
 
