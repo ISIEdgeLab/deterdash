@@ -158,9 +158,10 @@ console.log('deterdash loaded.');
         }
     }
 
-    deterdash.build_keyvalue_input_table = function(divsel, table_class, key_attr, data, nodes) {
+    deterdash.build_keyvalue_input_table = function(divsel, data_name, key_attr, data, nodes) {
         var table = divsel.append("div").classed("table-responsive ", true)
-                    .append("table").classed("table " + table_class, true) 
+                    .append("table").classed("table aal_stream_data", true)
+                    .attr("aal_data_name", data_name)
 
         var thead = table.append("thead")
 
@@ -193,10 +194,10 @@ console.log('deterdash loaded.');
         }
     }
 
-    deterdash.get_keyvalue_table_values = function(divid, key_attr) {
+    deterdash.get_keyvalue_table_values = function(table) {
         var keyvalue = {}
-        $(divid + " [" + key_attr + "]").each(function() {
-            var key = this.getAttribute(key_attr)
+        $(table).find("td [value_key]").each(function() {
+            var key = this.getAttribute("value_key")
             if ($(this).is(".select2")) { 
                 keyvalue[key] = $(this).select2().val()
             } else {
@@ -270,27 +271,12 @@ console.log('deterdash loaded.');
         var ae_container = agent_div.append("div").classed("box box-primary", true)
         var ae_header = ae_container
             .append("div").classed("box-header with-border", true)
+
+        ae_header
             .append("h3").classed("box-title", true)
             .text("Execute Agent on Server")
 
-        var ae_body = ae_container.append("div").classed("box-body", true)
-
-        var ae_timeline = ae_body.append("div").append("ul").classed("timeline", true)
-
-        ae_timeline.append("li").classed("time-label", true)
-            .append("span").classed("bg-green", true).text("Stream Start")
-
-        // There is always an agent initialization and it's always first in the stream. 
-        var init_agent = ae_timeline.append("li")
-        init_agent.append("i").classed("fa fa-gears bg-blue", true)
-        var init_agent_item = init_agent.append("div").classed("timeline-item", true)
-        init_agent_item
-            .append("h3").classed("timeline-header", true)
-            .text("Initialize Agent")
-        var init_agent_body = init_agent_item.append("div").classed("timeline-body", true)
-        deterdash.build_keyvalue_input_table(init_agent_body, "agent_init_data", "value_key", agent.variables, nodes)
-
-        // now build a drop down to add methods. 
+        // now build a drop down to add methods to the header.
         var dd_btn_group = ae_header
             .append("div").classed("pull-right", true)
             .append("span")
@@ -306,6 +292,27 @@ console.log('deterdash loaded.');
             .attr("data-toggle", "dropdown")
             .text("Add Method to Stream")
 
+        dd_btn_group
+            .append("button").classed("btn btn-primary btn-xs", true)
+            .text("Execute Stream")
+            .on("click", function() { execute_stream(ae_timeline) })
+
+        // agent exe body is the stream displayed as a timeline.
+        var ae_body = ae_container.append("div").classed("box-body", true)
+        var ae_timeline = ae_body.append("div").append("ul").classed("timeline", true)
+        ae_timeline.append("li").classed("time-label", true)
+            .append("span").classed("bg-green", true).text("Stream Start")
+
+        // There is always an agent initialization and it's always first in the stream. 
+        var init_agent = ae_timeline.append("li")
+        init_agent.append("i").classed("fa fa-gears bg-blue", true)
+        var init_agent_item = init_agent.append("div").classed("timeline-item", true)
+        init_agent_item
+            .append("h3").classed("timeline-header", true)
+            .text("Initialize Agent")
+        var init_agent_body = init_agent_item.append("div").classed("timeline-body", true)
+        deterdash.build_keyvalue_input_table(init_agent_body, "agent_init", "value_key", agent.variables, nodes)
+
         var method_entries = dd_btn_group.append("ul").classed("dropdown-menu pull-right", true)
         method_entries
             .selectAll("li")
@@ -315,18 +322,26 @@ console.log('deterdash loaded.');
             .text(function(d) { return d.name })
             .on("click", function(d) { add_agent_method_to_stream(d, ae_timeline) })
 
-        // rows_div.append("button")
-        //     .classed("btn btn-block btn-primary", true)
-        //     .attr("type", "button")
-        //     .text("Run startCollection()")
-        //     .on("click", function(d) { 
-        //         var kvs = deterdash.get_keyvalue_table_values(".agent_init_data", "value_key")
-        //         console.log("kvs: ", kvs)
-        //         var aal = deterdash.generate_aal(kvs)
-        //         console.log('aal: ', aal)
-        //         console.log('aal: ', JSON.stringify(aal))
-        //         deterdash.execute_aal(aal)
-        // })
+        function execute_stream(timeline) {
+            var aal_input = []
+            $(".aal_stream_data").each(function(i) { 
+                var data_name = $(this).attr("aal_data_name")
+                if (data_name) {
+                    var args = deterdash.get_keyvalue_table_values($(this))
+                    console.log("aal data: " + data_name + ":",  args)
+                    var d = {}
+                    d[data_name] = args
+                    aal_input.push(d)
+                }
+            })
+            console.log("aal_input: ", aal_input)
+            var aal = deterdash.generate_aal(aal_input)
+            console.log('aal: ', aal)
+            console.log('aal: ', JSON.stringify(aal))
+
+            // Finally execute the AAL server side.
+            deterdash.execute_aal(aal)
+        }
 
         function add_agent_method_to_stream(d, timeline) {
             console.log("adding to exe timeline: ", d)
@@ -342,7 +357,7 @@ console.log('deterdash loaded.');
                     agent_method.remove()
                 })
             var agent_method_body = agent_method_item.append("div").classed("timeline-body", true)
-            deterdash.build_keyvalue_input_table(agent_method_body, "agent_method_" + d.name, 
+            deterdash.build_keyvalue_input_table(agent_method_body, d.name, 
                 "value_key", d.args, [])
 
         }
