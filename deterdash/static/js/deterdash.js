@@ -124,7 +124,7 @@ console.log('deterdash loaded.');
 
     deterdash.build_keyvalue_input_entry = function(selection, key_attr, d, key, nodes) { 
         if (d.type === "nodelist") {
-            var nodelist = selection.append("td").append("select")
+            var input = selection.append("td").append("select")
                 .classed("form-control select2", true)
                 .attr(key_attr, key)
                 .attr("multiple", "multiple")
@@ -133,28 +133,41 @@ console.log('deterdash loaded.');
                 .attr('tokenSeparators', "[',', ' ']")
                 .attr('tags', 'true')
                 .attr('key', key)
-            nodelist.selectAll("option")
+            input.selectAll("option")
                 .data(nodes)
                 .enter()
                 .append("option")
                     .text(function(d) { return d })
         } else if (d.type == "boolean") { 
-            var binput = selection.append("select")
+            var input = selection.append("select")
                 .classed("form-control", true)
                 .attr(key_attr, key)
-            binput.append("option").text("true")
-            binput.append("option").text("false")
+            input.append("option").text("true")
+            input.append("option").text("false")
         } else {
             var input = selection.append("input")
-                .attr("type", "text")
                 .attr(key_attr, key)
+                .attr('type', 'text')
                 .classed("form-control", true)
 
-            if (d.default) {
-                input.attr('value', d.default)
-            } else {
-                input.attr("placeholder", "Enter value...")
+            if (d.type === 'integer') {
+                input.attr('type', 'number')
+                    .attr('min', '0')
+                    .attr('step', '1')
             }
+            else if (d.type === 'double') {
+                input.attr('type', 'number')
+                    .attr('min', '0')
+                    .attr('step', 'any')
+            }
+            else {
+                input.attr('type', 'text')
+            }
+        }
+        if (d.hasOwnProperty('default')) {
+            input.attr('value', d.default)
+        } else {
+            input.attr("placeholder", "Enter value...")
         }
     }
 
@@ -179,7 +192,7 @@ console.log('deterdash loaded.');
             deterdash.build_keyvalue_input_entry(onnodes, key_attr, {type: "nodelist"}, 'run_on_nodes', nodes)
         }
 
-        if (data.length) {
+        if (data && data.length) {
             data.forEach(function(d) { 
                 var row = tbody.append("tr")
                 row.append("td").text(d['name'])
@@ -200,8 +213,15 @@ console.log('deterdash loaded.');
             var key = this.getAttribute("value_key")
             if ($(this).is(".select2")) { 
                 keyvalue[key] = $(this).select2().val()
-            } else {
-                keyvalue[key] = this.value
+            } 
+            else {
+                var t = this.getAttribute("type")
+                if (t === "number") {
+                    keyvalue[key] = Number(this.value)
+                }
+                else {
+                    keyvalue[key] = this.value
+                }
             }
         })
         return keyvalue
@@ -247,7 +267,8 @@ console.log('deterdash loaded.');
         var rows_div = agent_div.append("div").attr("class", "row")
 
         var about = rows_div.append("div").attr("class", "col-lg-12")
-        var kvmap = {display: "Agent", description: "About", name: "Name", magi_version: "Magi Version"}
+        var kvmap = {display: "Agent", description: "About", name: "Name",
+                     magi_version: "Magi Version", "path": "Agent Path"}
         deterdash.make_key_value_box(about, "About", kvmap, agent)
 
         if (agent.variables && agent.variables.length) { 
@@ -295,7 +316,7 @@ console.log('deterdash loaded.');
         dd_btn_group
             .append("button").classed("btn btn-primary btn-xs", true)
             .text("Execute Stream")
-            .on("click", function() { execute_stream(ae_timeline) })
+            .on("click", function() { push_stream(ae_timeline) })
 
         // agent exe body is the stream displayed as a timeline.
         var ae_body = ae_container.append("div").classed("box-body", true)
@@ -322,7 +343,7 @@ console.log('deterdash loaded.');
             .text(function(d) { return d.name })
             .on("click", function(d) { add_agent_method_to_stream(d, ae_timeline) })
 
-        function execute_stream(timeline) {
+        function push_stream(timeline) {
             var aal_input = []
             $(".aal_stream_data").each(function(i) { 
                 var data_name = $(this).attr("aal_data_name")
@@ -334,13 +355,33 @@ console.log('deterdash loaded.');
                     aal_input.push(d)
                 }
             })
+            aal_input['path'] = agent.path
             console.log("aal_input: ", aal_input)
             var aal = deterdash.generate_aal(aal_input)
             console.log('aal: ', aal)
             console.log('aal: ', JSON.stringify(aal))
 
-            // Finally execute the AAL server side.
-            deterdash.execute_aal(aal)
+            // Finally execute the AAL server side and write the log to the div id given.
+            var magi_orch_log_id = 'magi_orch_log'
+            if (! document.getElementById(magi_orch_log_id)) {
+                var logdiv = d3.select("#exe_agent_divid")
+                var box = logdiv.append("div").classed("row", true)
+                                .append("div").classed("col-lg-12", true)
+                                .append("div").classed("box box-solid box-primary", true)
+                var header = box.append("div").classed("box-header", true)
+                header.append("h3").classed("box-title", true).text("Orchestration Output")
+                header.append("div").classed("box-tools pull-right", true)
+                      .append("button").classed("btn btn-primary btn-sm", true).attr("data-widget", "collapse")
+                      .append("i").classed("fa-minus", true)
+                box.append("div").classed("box-body", true)
+                    .append("form")
+                    .append("textarea").classed("form-control", true)
+                    .attr("id", magi_orch_log_id)
+                    .attr('rows', 30)
+                    .attr("disabled", true)
+            }
+                
+            deterdash.execute_aal(aal, magi_orch_log_id)
         }
 
         function add_agent_method_to_stream(d, timeline) {
@@ -379,44 +420,94 @@ console.log('deterdash loaded.');
         }
     }
 
-    deterdash.execute_aal = function(aal) {
+    deterdash.execute_aal = function(aal, log_id) {
+        var ta = document.getElementById(log_id)
+        ta.value = ""
+        ta.value += "Opening web socket to server\n"
+
+        var ws = new WebSocket("ws://localhost:5001")
+
+        ws.onopen = function() { 
+            ta.value += 'Connected. Sending AAL...\n'
+            ta.scrollTop = ta.scrollHeight
+            try {
+                ws.send(JSON.stringify(aal))
+            } catch(ex) {
+                ta.value += 'Error sending AAL: ' + ex
+                ta.scrollTop = ta.scrollHeight
+            }
+        }
+
+        ws.onclose = function() { 
+            ta.value += 'Disconnected from websocket.\n'
+            ta.scrollTop = ta.scrollHeight
+        }
+
+        ws.onerror = function(event) {
+            ta.value += "WEBSOCKET ERROR: " + event.data + '\n'
+            ta.scrollTop = ta.scrollHeight
+        }
+
+        ws.onmessage = function(event) {
+            ta.value += event.data + '\n'
+            ta.scrollTop = ta.scrollHeight
+        }
+
     }
 
-    deterdash.generate_aal = function(init_args) { 
-        var group_name = 'group_name' 
+    deterdash.generate_aal = function(aal_input) { 
+        var group_name = 'agent_group'
+        // agent name must be unique across Maig orchestrations...
         var agent_name = 'agent_' + Math.random().toString(16).slice(2, 10)
         var stream_name = 'main'
-        var agent_path = '/users/glawler/src/edgect/magi/agents/pycurl_client'
+        var agent_path = aal_input['path']
 
-        var run_on_nodes = init_args['run_on_nodes']
-        delete init_args['run_on_nodes']
-        var exec_args = init_args
-
+        var agent_exec_args = aal_input.shift()['agent_init']  // GTL TODO verify input!
 
         var aal = {}
         aal['streamstarts'] = [stream_name]
 
         aal['groups'] = {}
-        aal['groups'][group_name] = run_on_nodes
+        aal['groups'][group_name] = agent_exec_args['run_on_nodes']
+        delete agent_exec_args['run_on_nodes']  // This is not part of the AAL agent exec args. 
 
         aal['agents'] = {}
         aal['agents'][agent_name] = {
             group: group_name,
             path: agent_path,
-            execargs: exec_args
+            execargs: agent_exec_args
         }
 
+        // iterate over the methods and args, generating stanzas for each.
         aal['eventstreams'] = {}
-        aal['eventstreams'][stream_name] = [{
-            type: 'event',
-            agent: agent_name,
-            method: 'startCollection',
-            args: {},
-            trigger: 'startCollectionStarted'
-        } , {
-            type: 'trigger',
-            triggers: ['startCollectionStarted']
-        }]
+        aal['eventstreams'][stream_name] = []
+
+        aal_input.forEach(function(stanza) { 
+            var keys = Object.keys(stanza)   // key are function/variable names,
+            var method_name = keys[0]
+            var method_args = stanza[method_name]
+            if (method_name === 'stream_pause') {
+                aal['eventstreams'][stream_name].push({
+                    type: 'trigger',
+                    triggers: [{timeout: method_args ['Interval']}]
+                })
+            } 
+            else { // method
+                var trigname = "trig_" + method_name + "_" + Math.random().toString(16).slice(2, 10)
+                aal['eventstreams'][stream_name].push({
+                    type: 'event',
+                    agent: agent_name,
+                    method: method_name,
+                    args: method_args,
+                    trigger: trigname
+                })
+
+                aal['eventstreams'][stream_name].push({
+                    type: 'trigger',
+                    triggers: [{event: trigname}]
+                })
+            }
+        })
 
         return(aal)
     }
@@ -1036,12 +1127,12 @@ console.log('deterdash loaded.');
 
             var simulation = d3.forceSimulation()
                 .force("link", d3.forceLink()
-                    .distance(60)
-                    .strength(0.7)
+                //    .distance(30)
+                //    .strength(0.9)
                     .id(function(d) { return d.id; }))
-                .force("collision", d3.forceCollide()
-                     .radius(function(d) { return node_rad+node_gap }).iterations(16))
-                .force("charge", d3.forceManyBody())
+                // .force("collision", d3.forceCollide()
+                //      .radius(function(d) { return node_rad+node_gap }).iterations(16))
+                .force("charge", d3.forceManyBody().distanceMax(150))
                 .force("center", d3.forceCenter(win_w/2, win_h/2))
                 .on("tick", ticked)
 
