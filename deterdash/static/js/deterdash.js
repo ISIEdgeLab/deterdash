@@ -266,32 +266,53 @@ console.log('deterdash loaded.');
         var agent_div = d3.select(agent_divid)
         var rows_div = agent_div.append("div").attr("class", "row")
 
-        var about = rows_div.append("div").attr("class", "col-lg-12")
+        var tabs = rows_div.append("ul").classed("nav nav-tabs", true)
+        tabs.append("li").attr("role", "presentation").classed("active", false)
+            .append("a")
+                .attr("href", "#exe_about")
+                .attr("role", "tab")
+                .attr("data-toggle", "tab")
+            .text("About")
+        tabs.append("li").attr("role", "presentation").classed("active", true)
+            .append("a")
+                .attr("href", "#exe_agent")
+                .attr("role", "tab")
+                .attr("data-toggle", "tab")
+            .text("Execute")
+        var tab_content = rows_div.append("div").classed("tab-content", "true")
+        var about_content = tab_content.append("div").attr("role", "tabpanel").classed("tab-pane", true)
+                                    .attr("id", "exe_about")
+        var exe_content = tab_content.append("div").attr("role", "tabpanel").classed("tab-pane active", true)
+                                    .attr("id", "exe_agent")
+
+        var about = about_content.append("div").attr("class", "col-lg-12")
         var kvmap = {display: "Agent", description: "About", name: "Name",
                      magi_version: "Magi Version", "path": "Agent Path"}
         deterdash.make_key_value_box(about, "About", kvmap, agent)
 
         if (agent.variables && agent.variables.length) { 
-            var table_div = rows_div.append("div").attr("class", "col-lg-12")
+            var table_div = about_content.append("div").attr("class", "col-lg-12")
             var init_heading_map = {Name: 'name', Type: 'type', Default: 'default', Help: 'help'}
             deterdash.build_table_panel(table_div, "Intialization", init_heading_map, agent.variables)
         }
 
         if (agent.method && agent.method.length) { 
-            var table_div = rows_div.append("div").attr("class", "col-lg-12")
+            var table_div = about_content.append("div").attr("class", "col-lg-12")
             var meth_heading_map = {Name: 'name', Arguments: 'args', Help: 'help'}
             deterdash.build_table_panel(table_div, "Methods", meth_heading_map, agent.method)
 
             // build the UI for input based on this agent. 
-            var agent_exe_ui = deterdash.build_agent_exe_ui(agent, agent_div, nodes) 
-
+            var agent_exe_ui = deterdash.build_agent_exe_ui(agent, exe_content, nodes) 
+        }
+        else {
+            exe_content.append("div").text("This agent has no defined methods.")
         }
     }
 
     deterdash.build_agent_exe_ui = function(agent, agent_div, nodes) {
-        var ae_container = agent_div.append("div").classed("box box-primary", true)
+        var ae_container = agent_div.append("div").classed("box box-primary box-solid", true)
         var ae_header = ae_container
-            .append("div").classed("box-header with-border", true)
+            .append("div").classed("box-header", true)
 
         ae_header
             .append("h3").classed("box-title", true)
@@ -320,7 +341,7 @@ console.log('deterdash loaded.');
 
         // agent exe body is the stream displayed as a timeline.
         var ae_body = ae_container.append("div").classed("box-body", true)
-        var ae_timeline = ae_body.append("div").append("ul").classed("timeline", true)
+        var ae_timeline = ae_body.append("div").classed("col-md-12", true).append("ul").classed("timeline", true)
         ae_timeline.append("li").classed("time-label", true)
             .append("span").classed("bg-green", true).text("Stream Start")
 
@@ -489,7 +510,7 @@ console.log('deterdash loaded.');
             if (method_name === 'stream_pause') {
                 aal['eventstreams'][stream_name].push({
                     type: 'trigger',
-                    triggers: [{timeout: method_args ['Interval']}]
+                    triggers: [{timeout: method_args ['Interval'] * 1000}]  // timeout is ms.
                 })
             } 
             else { // method
