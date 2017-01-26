@@ -35,12 +35,12 @@
 
             var simulation = d3.forceSimulation()
                 .force("link", d3.forceLink()
-                    .distance(60)
-                    .strength(0.7)
+                    // .distance(60)
+                    // .strength(0.7)
                     .id(function(d) { return d.id; }))
-                .force("collision", d3.forceCollide()
-                     .radius(function(d) { return node_rad+node_gap }).iterations(16))
-                .force("charge", d3.forceManyBody())
+                // .force("collision", d3.forceCollide()
+                //      .radius(function(d) { return node_rad+node_gap }).iterations(16))
+                .force("charge", d3.forceManyBody().distanceMax(150))
                 .force("center", d3.forceCenter(win_w/2, win_h/2))
                 .on("tick", ticked)
 

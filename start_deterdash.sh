@@ -2,6 +2,14 @@
 
 #
 # install and run the deterdash server. 
+# -------------------------------------
+# This file will start the Deterdash serverm if run. It is meant to be
+# a simple way to start the server via an NS file or one-time run init/boot script
+# on any DETER node. IT assumes the git repo for the server is at:
+#
+#   /proj/edgect/share/deterdash
+#
+# It assumes nothing else and will install needed libs and utils. 
 #
 
 # check user permissions
@@ -9,16 +17,20 @@
 # checkout the deterdash repo
 # install deterdash dependencies
 # start webserver
+# start websocketd
 # (do we also want to start a few agents? If so, how do we do that from the control node?)
+
+LIBDETERDASH_INSTALL=${LIBDETERDASH_INSTALL:-/proj/edgect/magi/current/source/libdeterdash.install}
+AGENTS_DIR=${AGENTS_DIR:-/users/glawler/src/edgect/magi/agents}
 
 if [[ $(id -u) != 0 ]]; then
     echo This script must be run as root. Exiting.
     exit 5
 fi
 
-if ! grep "DISTRIB_ID=Ubuntu" /etc/lsb-release > /dev/nulli 2>&1; then
+if ! grep "DISTRIB_ID=Ubuntu" /etc/lsb-release > /dev/null 2>&1; then
     # we use start-stop-daemon, which is ubuntu only I believe.
-    echo This script should only be run on Ubunutu machines. 
+    echo This script should only be run on Ubuntu machines. 
 fi
 
 if ! hash python > /dev/null 2>&1; then
@@ -74,7 +86,7 @@ else
     echo Cloned deterdash.
 fi
 
-# Install dependencies of deterdash (stolen from deterdash's run.sh script).
+# Install dependencies of deterdash (stolen from deterdash run.sh script).
 for p in python-flask python-pymongo; do
     if [ $(dpkg-query -W -f='${Status}' ${p} 2>/dev/null | grep -c "ok installed") -eq 0 ]; then
         if ! apt-get install -y ${p} > /dev/null 2>&1; then 
@@ -84,11 +96,12 @@ for p in python-flask python-pymongo; do
     fi
 done
 
-if [[ ! -e /usr/local/lib/python2.7/dist-packages/libdeterdash-0.1.egg-info ]]; then 
-    /proj/edgect/magi/current/source/libdeterdash.install /tmp/ \
-            /proj/edgect/magi/current/source > /dev/null 2>&1
-
-    if [[ ! -e /usr/local/lib/python2.7/dist-packages/libdeterdash-0.1.egg-info ]]; then 
+python -c 'import libdeterdash' 2>&1 | grep ImportError > /dev/null
+if [[ $? -ne 1 ]]; then 
+    echo ${LIBDETERDASH_INSTALL} /tmp $(dirname ${LIBDETERDASH_INSTALL})
+    ${LIBDETERDASH_INSTALL} /tmp $(dirname ${LIBDETERDASH_INSTALL})
+    python -c 'import libdeterdash' 2>&1 | grep ImportError > /dev/null
+    if [[ $? -ne 1 ]]; then
         echo Error installing libdeterdash.
         exit 30
     fi
@@ -97,7 +110,7 @@ fi
 # start the webserver as a daemon.
 PIDFILE=/var/run/deterdash.pid
 start-stop-daemon --start --quiet --make-pidfile --pidfile ${PIDFILE} --background \
-    --startas /bin/bash -- -c "exec ${mount_dir}/deterdash/runserver.py -l debug > /var/log/deterdash 2>&1"
+    --startas /bin/bash -- -c "exec ${mount_dir}/deterdash/runserver.py -l debug -a ${AGENTS_DIR} > /var/log/deterdash 2>&1"
 
 if [[ $? -ne 0 ]]; then 
     echo Error starting deterdash.

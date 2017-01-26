@@ -89,7 +89,10 @@ class DeterDashboard(object):
         return None, None, None
 
     def register_agent(self, idlpath):
-        '''Given a path to an agents' IDL, register that agent such that it shows up as an executable agent in the GUI.'''
+        '''
+            Given a path to an agents' IDL, register that agent such that it shows up 
+            as an executable agent in the GUI.
+        '''
         log.info('Attempting to register agent via IDL: {}'.format(idlpath))
         if not os.path.exists(idlpath) or not os.path.isfile(idlpath):
             log.error('bad file/path for IDL given to libdeterdash.')
@@ -102,6 +105,25 @@ class DeterDashboard(object):
             log.error('Unable to read IDL file {}: {}'.format(e, idlpath))
             return False
 
+        # We add the path here, so the client knows the path for the AAL it generates.
+        # Note that generating the AAL clientside is a huge security hole as eventually
+        # magi takes that file and loads/executes the agent code. Ideally the server
+        # would add path and mainfile to the AAL serverside, once it' verified the agent 
+        # is whitelisted. Oh well. 
+        idl['path'] = os.path.dirname(idlpath)
+
+        # we only add unique agents, where unique is defined by name and path. We update if an
+        # existing entry is found.
         idl_collection = database.getCollection(DeterDashboard.viz_idl_table)
-        idl_collection.insert(idl)    # Should this be broken out and/or stored in the DB differently? 
-                                      # How are we going to filter dups inserted by other nodes?
+
+        # Magi DB does not support upsert, so we force it by removing if data found.
+        key = {'path': idl['path'], 'name': idl['name']}
+        if idl_collection.find_one(key):
+            log.info('Removing IDL entry: {}/{}'.format(idl['name'], idl['path']))
+            idl_collection.remove(key)
+    
+        # bug in Magi adds keys to the idl dict in find(). Remove them.
+        # idl = {k:v for k, v in idl if k not in database.Collection.INTERNAL_KEYS}
+    
+        log.info('Adding IDL entry: {}'.format(idl))
+        idl_collection.insert(idl)
