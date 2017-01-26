@@ -324,16 +324,32 @@ console.log('deterdash loaded.');
             .append("span")
             .append("div").classed("btn-group control-btn-grp", true)
 
+        // add dropdown of all methods on this agent.
+        dd_btn_group
+            .append("button").classed("btn btn-primary btn-xs dropdown-toggle", true)
+            .attr("data-toggle", "dropdown")
+            .attr("type", "button")
+            .text("Add Method to Stream  ")
+            .append("span").classed("caret", true)
+
+        var method_entries = dd_btn_group.append("ul").classed("dropdown-menu", true)
+                                .attr("role", "menu")
+        method_entries
+            .selectAll("li")
+            .data(agent.method)  // might as well use D3 to populate the dropdown.
+            .enter()
+            .append("li")
+            .append("a").attr("href", "#")
+            .text(function(d) { return d.name })
+            .on("click", function(d) { add_agent_method_to_stream(d, ae_timeline) })
+
+        // add a pause to the stream
         dd_btn_group
             .append("button").classed("btn btn-primary btn-xs", true)
             .text("Add Pause to Stream")
             .on("click", function() { add_pause_to_stream(ae_timeline) })
 
-        dd_btn_group
-            .append("button").classed("btn btn-primary btn-xs dropdown-toggle", true)
-            .attr("data-toggle", "dropdown")
-            .text("Add Method to Stream")
-
+        // execute the AAL/stream.
         dd_btn_group
             .append("button").classed("btn btn-primary btn-xs", true)
             .text("Execute Stream")
@@ -354,15 +370,6 @@ console.log('deterdash loaded.');
             .text("Initialize Agent")
         var init_agent_body = init_agent_item.append("div").classed("timeline-body", true)
         deterdash.build_keyvalue_input_table(init_agent_body, "agent_init", "value_key", agent.variables, nodes)
-
-        var method_entries = dd_btn_group.append("ul").classed("dropdown-menu pull-right", true)
-        method_entries
-            .selectAll("li")
-            .data(agent.method)  // might as well use D3 to populate the dropdown.
-            .enter()
-            .append("li")
-            .text(function(d) { return d.name })
-            .on("click", function(d) { add_agent_method_to_stream(d, ae_timeline) })
 
         function push_stream(timeline) {
             var aal_input = []
