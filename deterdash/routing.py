@@ -115,6 +115,11 @@ def get_route_path(src, dst):
                     next_hop = edge_entry['nbr']
                     break
 
+        # check for loops and bail if found.
+        if next_hop in path:
+            log.warn('found loop in path ({}). returning partial path.'.format(next_hop))
+            return complete, path
+
         path.append(next_hop)
         log.debug('next hop to {}: {}'.format(dst, next_hop))
         if next_hop == dst:
