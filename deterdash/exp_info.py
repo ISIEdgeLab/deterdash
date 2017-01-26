@@ -41,17 +41,18 @@ def get_exp_info():
 
         data[row['host']] = {'is_container': row['is_container']}
 
-    cursor = db.experiment_data.find_one({
-        'agent': 'node_stats_users'
+    cursor = db.experiment_data.find({
+        'agent': 'node_stats_users',
+        'creator' : { "$ne": None }
     }, {
         '_id': False,
         'creator': True,
         'swapper': True
-    })
+    }).sort('created', pymongo.DESCENDING).limit(1)
 
-    if cursor:
-        data['creator'] = cursor['creator']
-        data['swapper'] = cursor['swapper']
+    if cursor.count():
+        data['creator'] = cursor[0]['creator']
+        data['swapper'] = cursor[0]['swapper']
 
     return data
 
@@ -90,7 +91,7 @@ def get_node_info(name):
         'uptime': True,
         'users': True,
         'created': True
-    }).sort('created', pymongo.DESCENDING)
+    }).sort('created', pymongo.DESCENDING).limit(1)
 
     if cursor.count():
         log.debug('found uptime/users: {}'.format(cursor[0]))
