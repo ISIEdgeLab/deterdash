@@ -120,7 +120,7 @@ else
 fi
 
 # copy over and run websocketd.
-mkdir ${mount_dir}/websocketd
+mkdir ${mount_dir}/websocketd 2>&1 /dev/null 
 pushd ${mount_dir}/websocketd
 cp /proj/edgect/share/websocketd*.zip .
 unzip websocketd*
