@@ -119,6 +119,18 @@ else
     echo deterdash started.
 fi
 
+# copy over and run websocketd.
+mkdir ${mount_dir}/websocketd
+pushd ${mount_dir}/websocketd
+cp /proj/edgect/share/websocketd*.zip .
+unzip websocketd*
+./websocketd --port 5001 ${mount_dir}/deterdash/orch_magi_orch.py -l debug >> /var/log/magi_orchestration.log 2>&1 &
+popd
+
+# ...and we might as well do this in case it's not been done elsewhere.
+/proj/edgect/exp_scripts/createMagiDBIndexes.sh
+
+
 # # wait a few seconds and see if it's still running. 
 # echo Pausing 5 second to confirm deterdash is still running...
 # sleep 5
