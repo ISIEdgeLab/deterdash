@@ -62,7 +62,8 @@ def get_viz_time_plot_data_node(start, stop, step, node, metric, agent):
     cursor = db.experiment_data.find({
             'agent': viz_data_entry['table'],  # Magi stores the "table name" in the "agent" field.
             'created': {'$gte': float(start), '$lt': float(stop)},
-            viz_data_entry['node_key']: node
+            viz_data_entry['node_key']: node,
+            metric: {'$exists': True}
         },
         {
             '_id': False,
