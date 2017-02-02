@@ -164,68 +164,84 @@
                     </div>
                     <!-- sidebar menu: : style can be found in sidebar.less -->
                     <ul class="sidebar-menu">
+                        <!---
                         <li>
                             <a href="{{ url_for('static', filename='../index.html') }}">
                                 <i class="fa fa-dashboard fa-fw"></i> Dashboard </a>
                         </li>
-                        {% for graphable in graphables %}
+                        --->
                         <li class="treeview">
                             <a href="#">
-                                <i class="fa {{ graphable.icon }} fa-fw"></i>
-                                <span>{{ graphable.display }}</span>
+                                <i class="fa fa-eye"></i>
+                                <span>Experiment Visualization</span>
                                 <i class="fa fa-angle-left pull-right"></i>
                             </a>
                             <ul class="treeview-menu">
-                                {% for agent in graphable.agents %}
-                                    <li>
-                                        <a href="../../viz/{{ graphable.endpoint }}/{{ agent.table }}">
-                                            <i class="fa fa-angle-double-right"></i>
-                                                {{ agent.display }} ({{ agent.table }})
-                                        </a>
-                                    </li>
-                                {% endfor %}
-                            </ul>
-                        </li>
-                        {% endfor %}
-                        {% if exe_agents|length > 0 %}
-                        <li class="treeview">
-                            <a href="#">
-                                <i class="fa fa-cog"></i>
-                                <span>Executable Agents</span>
-                                <i class="fa fa-angle-left pull-right"></i>
-                            </a>
-                            <ul class="treeview-menu">
-                                {% for a in exe_agents %}
-                                    <li>
-                                        <a href="../../viz/exe_agent/{{ a.name }}">
-                                            <i class="fa fa-angle-double-right"></i>
-                                            {{ a.display }}
-                                        </a>
-                                    </li>
-                                {% endfor %}
-                            </ul>
-                        </li>
-                        {% endif %}
-                        {% if nodes|length > 0 %}
-                        <li class="treeview">
-                            <a href="#">
-                                <i class="fa fa-desktop"></i>
-                                <span>Experiment Nodes</span>
-                                <i class="fa fa-angle-left pull-right"></i>
-                            </a>
-                            <ul class="treeview-menu">
-                                {% for node in nodes|sort %}
-                                <li>
-                                    <a href="../../viz/node_info/{{ node }}">
-                                        <i class="fa fa-angle-double-right"></i>
-                                        {{ node }}
+                                {% for graphable in graphables %}
+                                <li class="treeview">
+                                    <a href="#">
+                                        <i class="fa {{ graphable.icon }} fa-fw"></i>
+                                        <span>{{ graphable.display }}</span>
+                                        <i class="fa fa-angle-left pull-right"></i>
                                     </a>
+                                    <ul class="treeview-menu">
+                                        {% for agent in graphable.agents %}
+                                            <li>
+                                                <a href="../../viz/{{ graphable.endpoint }}/{{ agent.table }}">
+                                                    {{ agent.display }} ({{ agent.table }})
+                                                </a>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
                                 </li>
                                 {% endfor %}
+                                {% if nodes|length > 0 %}
+                                <li class="treeview">
+                                    <a href="#">
+                                        <i class="fa fa-desktop"></i>
+                                        <span>Node Status</span>
+                                        <i class="fa fa-angle-left pull-right"></i>
+                                    </a>
+                                    <ul class="treeview-menu">
+                                        {% for node in nodes|sort %}
+                                        <li>
+                                            <a href="../../viz/node_info/{{ node }}">
+                                                {{ node }}
+                                            </a>
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                </li>
+                                {% endif %}
                             </ul>
                         </li>
-                        {% endif %}
-                    </ul>
+                        <li class="treeview">
+                            <a href="#">
+                                <i class="fa fa-music"></i>
+                                <span>Experiment Orchestration</span>
+                                <i class="fa fa-angle-left pull-right"></i>
+                            </a>
+                            <ul class="treeview-menu">
+                                {% if exe_agents|length > 0 %}
+                                <li class="treeview">
+                                    <a href="#">
+                                        <i class="fa fa-cog"></i>
+                                        <span>Executable Agents</span>
+                                        <i class="fa fa-angle-left pull-right"></i>
+                                    </a>
+                                    <ul class="treeview-menu">
+                                        {% for a in exe_agents %}
+                                            <li>
+                                                <a href="../../viz/exe_agent/{{ a.name }}">
+                                                    {{ a.display }}
+                                                </a>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </li>
                 </section>
             </aside>
 
