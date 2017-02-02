@@ -19,16 +19,13 @@ def get_exp_info():
     #         "experiment" : "viztest",
     #         "type" : "nodeinfo"
     # }
-    cursor = db.experiment_data.find(
-        {
-            'agent': 'node_stats_nodeinfo',  # GTL - this should be read from somewhere. 
-        },
-        {
-            '_id': False,
-            'created': False,
-            'agent': False
-        }
-    )
+    cursor = db.experiment_data.find({
+        'table_type': 'ns_nodeinfo',
+    }, {
+        '_id': False,
+        'created': False,
+        'agent': False
+    })
 
     data = {}
     rows = list(cursor)
@@ -42,7 +39,7 @@ def get_exp_info():
         data[row['host']] = {'is_container': row['is_container']}
 
     cursor = db.experiment_data.find({
-        'agent': 'node_stats_users',
+        'table_type': 'ns_users',
         'creator' : { "$ne": None }
     }, {
         '_id': False,
@@ -58,7 +55,7 @@ def get_exp_info():
 
 def get_exp_nodes():
     db = magi_db()
-    cursor = db.experiment_data.find_one({'agent': 'topo_agent'})
+    cursor = db.experiment_data.find_one({'agent': 'topo_agent'})  # This agent name is hardcoded in Magi.
 
     if not cursor or 'nodes' not in cursor:
         return None
@@ -71,7 +68,7 @@ def get_node_info(name):
     db = magi_db()
     retval = {'name': name}
     cursor = db.experiment_data.find({
-        'agent': 'node_stats_ports',
+        'table_type': 'ns_ports',
         'host': name
     }, {
         '_id': False,
@@ -84,7 +81,7 @@ def get_node_info(name):
         retval['timestamp'] = cursor[0]['created']
 
     cursor = db.experiment_data.find({
-        'agent': 'node_stats_users',
+        'table_type': 'ns_users',
         'host': name
     }, {
         '_id': False,
