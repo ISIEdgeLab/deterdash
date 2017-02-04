@@ -21,7 +21,7 @@
 # (do we also want to start a few agents? If so, how do we do that from the control node?)
 
 DASHDIR=${DASHDIR:-/share/deterdash}
-REPODIR=${$DASHDIR/current}
+REPODIR=${DASHDIR}/current
 
 LIBDETERDASH_INSTALL=${LIBDETERDASH_INSTALL:-/share/deterdash/packages/libdeterdash.install}
 AGENTS_DIR=${AGENTS_DIR:-/proj/edgect/magi/modules}
@@ -31,6 +31,7 @@ while getopts :e:m:p:ix:irvkchs opt; do
         a) AGENTS_DIR=$OPTARG
             ;;
         h) echo $(basename $0) -a /path/to/agents_dir \[-h\]
+            exit 1
             ;;
     esac
 done
