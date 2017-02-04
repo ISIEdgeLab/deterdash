@@ -20,8 +20,20 @@
 # start websocketd
 # (do we also want to start a few agents? If so, how do we do that from the control node?)
 
-LIBDETERDASH_INSTALL=${LIBDETERDASH_INSTALL:-/proj/edgect/magi/current/source/libdeterdash.install}
-AGENTS_DIR=${AGENTS_DIR:-/users/glawler/src/edgect/magi/agents}
+DASHDIR=${DASHDIR:-/share/deterdash}
+REPODIR=${$DASHDIR/current}
+
+LIBDETERDASH_INSTALL=${LIBDETERDASH_INSTALL:-/share/deterdash/packages/libdeterdash.install}
+AGENTS_DIR=${AGENTS_DIR:-/proj/edgect/magi/modules}
+
+while getopts :e:m:p:ix:irvkchs opt; do
+	case $opt in
+        a) AGENTS_DIR=$OPTARG
+            ;;
+        h) echo $(basename $0) -a /path/to/agents_dir \[-h\]
+            ;;
+    esac
+done
 
 if [[ $(id -u) != 0 ]]; then
     echo This script must be run as root. Exiting.
@@ -79,7 +91,7 @@ if [[ -e ${mount_dir}/deterdash ]]; then
     rm -rf ${mount_dir}/deterdash > /dev/null 2>&1; 
 fi
 
-if ! git clone /proj/edgect/share/deterdash > /dev/null 2>&1; then
+if ! git clone ${REPODIR} > /dev/null 2>&1; then
     echo Unable to clone deterdash. Exiting.
     exit 20
 else
@@ -120,16 +132,17 @@ else
 fi
 
 # copy over and run websocketd.
-mkdir ${mount_dir}/websocketd 2>&1 /dev/null 
-pushd ${mount_dir}/websocketd
-cp /proj/edgect/share/websocketd*.zip .
-unzip websocketd*
+echo Copying websocketd.
+mkdir ${mount_dir}/websocketd > /dev/null 2>&1 
+pushd ${mount_dir}/websocketd > /dev/null 2>&1
+cp ${DASHDIR}/packages/websocketd*.zip . > /dev/null 2>&1
+unzip websocketd* > /dev/null 2>&1
+echo Running websocketd on port 5001
 ./websocketd --port 5001 ${mount_dir}/deterdash/orch_magi_orch.py -l debug >> /var/log/magi_orchestration.log 2>&1 &
-popd
+popd > /dev/null 2>&1
 
 # ...and we might as well do this in case it's not been done elsewhere.
-/proj/edgect/exp_scripts/createMagiDBIndexes.sh
-
+${DASHDIR}/bin/createMagiDBIndexes.sh
 
 # # wait a few seconds and see if it's still running. 
 # echo Pausing 5 second to confirm deterdash is still running...

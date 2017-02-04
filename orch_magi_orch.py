@@ -51,7 +51,7 @@ def execute_cmd(cmd, ev):
 
 if __name__ == '__main__':
     def_conf = '/var/log/magi/config/experiment.conf'
-    def_path = '/proj/edgect/magi/current/magi_orchestrator.py'
+    def_path = '/share/magi/current/magi_orchestrator.py'
 
     ap = argparse.ArgumentParser(description='Given an AAL on stdin, run the Magi Orchestrator with that AAL.')
     addLoggingArgs(ap)
