@@ -122,12 +122,16 @@ if [[ $? -ne 1 ]]; then
 fi
 
 # start the webserver as a daemon.
+# we want to restart if running so stop it first then start.
+pkill -f runserver   # I could not get --stop to work properly. Nuke from orbit.
 PIDFILE=/var/run/deterdash.pid
 start-stop-daemon --start --quiet --make-pidfile --pidfile ${PIDFILE} --background \
     --startas /bin/bash -- -c "exec ${mount_dir}/deterdash/runserver.py -l debug -a ${AGENTS_DIR} > /var/log/deterdash 2>&1"
 
-if [[ $? -ne 0 ]]; then 
-    echo Error starting deterdash.
+start-stop-daemon --status --quiet --pidfile ${PIDFILE} > /dev/null 2>&1
+ev=$?
+if [[ ${ev} -ne 0 ]]; then 
+    echo Error starting deterdash: ${ev}
     exit 35
 else
     echo deterdash started.
