@@ -2,6 +2,9 @@
 
 import logging
 import argparse
+from os.path import isfile, join
+from os import sep
+from shutil import copyfile
 from deterdash.argParseLog import handleLoggingArgs, addLoggingArgs
 
 log = logging.getLogger(__name__)
@@ -34,5 +37,22 @@ if __name__ == '__main__':
         if args.agentdir:
             from deterdash.exe_agents import load_static_agents
             load_static_agents(args.agentdir)
+
+        # # cp a few exp images from teh proj dir to serve.
+        # from deterdash.exp_info import get_exp_info
+        # exp_info = get_exp_info()
+        # if exp_info:
+        #     path = join(sep, 'proj', exp_info['project'], 'exp', exp_info['experiment'], sep)
+        #     files = [
+        #             (join('tbdata', '{}.png'.format(exp_info['experiment'])), 'exp_topo.png'),
+        #             (join('containers', 'visualization.png'), 'visualization.png'),
+        #             (join('containers', 'vis-partitions.png'), 'vis-partitions.png')
+        #     ]
+        #     for frm, to in files:
+        #         if isfile(frm):
+        #             copyfile
+
+
+
 
     app.run(host='0.0.0.0', port=args.port, debug=loglevel==logging.DEBUG)

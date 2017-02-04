@@ -17,6 +17,77 @@ console.log('deterdash loaded.');
         titlediv.append("small").text(" " +subtitle)
     }
 
+    deterdash.generate_exp_status = function(stat_divid) {
+        var exp_name = null,
+            exp_proj = null,
+            exp_url = null
+
+        var exp_info_promise = new Promise(
+            function(resolve, reject) {
+                d3.json(window.location.origin + "/api/exp_info",
+                    function(error, json) {
+                        if(error) {
+                            reject("error getting experiment info from server");
+                            return;
+                        }
+                        if(json.status !== 0) {
+                            reject("server unable to get exp info.");
+                            return;
+                        }
+                        resolve(json);
+                    }
+                );
+            });
+
+            exp_info_promise.then(
+                function(exp_info_json) {
+                    console.log("got exp info: ", exp_info_json)
+                    exp_name = exp_info_json['experiment']
+                    exp_url = "http://www.isi.deterlab.net/showexp.php?pid=" + exp_info_json['project'] +
+                                  "&eid=" + exp_info_json['experiment']
+                    exp_proj = exp_info_json['project']
+
+                    generate_page();
+                },
+                function(error) {
+                    console.log("error getting exp info: " + error);
+                }
+            ).catch(function(reason) {
+                console.log("error: " + reason);
+            });
+
+            function generate_page() { 
+                console.log("generating exp status page")
+                // vars are filled out now.
+                // var div = document.getElementById(stat_divid)
+                $(stat_divid).empty()
+
+                var div = d3.select(stat_divid)
+                div.append("h3").text("More things will be on this page.")
+                div.append("hr")
+                div.append('a').attr("href", exp_url).text("Link to " + exp_proj + "/" + exp_name + " on DETER.")
+                var urlbase = window.location.origin + '/static/img/'
+                $.get(urlbase + 'exp_topo.png')
+                    .done(function() {
+                        div.append('p')
+                        div.append("h4").text("Exp DETER topology")
+                        div.append('img').attr("src", "/static/img/exp_topo.png").attr("height", 300)
+                     })
+                $.get(urlbase + 'visualization.png')
+                    .done(function() {
+                        div.append('p')
+                        div.append("h4").text("Exp container topology")
+                        div.append('img').attr("src", "/static/img/visualization.png").attr("height", 600)
+                    })
+                $.get(urlbase + 'vis-partitions.png')
+                    .done(function() {
+                        div.append('p')
+                        div.append("h4").text("Exp container partitions")
+                        div.append('img').attr("src", "/static/img/vis-partitions.png").attr("height", 600)
+                    })
+            }
+    }
+
     deterdash.load_experiment_info = function(title_id, exp_user_divid, exp_url_id) { 
         var exp_info_promise = new Promise(
             function(resolve, reject) {
@@ -822,12 +893,13 @@ console.log('deterdash loaded.');
         var datatype = agent_json.datatype;
         var agent = agent_json.table; // Don't ask. 
         var data_units = agent_json.units;
+        var plot_div = document.getElementById(plot_divid.substring(1))
 
         var margin = {top: 20, right: 120, bottom: 50, left: 60},
-            width = 950 - margin.left - margin.right,
+            width = plot_div.clientWidth - margin.left - margin.right,
             height = 600 - margin.top - margin.bottom;
 
-        var limit = 60 * 1000,      // view window in ms
+        var limit = 90 * 1000,      // view window in ms
             duration = 5000,        // fetch new data in ms
             now = new Date(),       // Date is ms
             y_ext = [0, 100];       // just a guess - will be updated as data comes in.
@@ -844,12 +916,14 @@ console.log('deterdash loaded.');
                     .x(function(d) { return x_scale(new Date(d.t*1000)); })  // scale is ms, t is seconds.
                     .y(function(d) { return y_scale(d.value); });
 
-        var svg = d3.select(plot_divid)
+        var svg_div = d3.select(plot_divid)
                     .append("svg")
-                        .attr("class", "chart")
+                        .classed("chart svg-content-responsive", true)
                         .attr("height", height + margin.top + margin.bottom)
                         .attr("width", width + margin.left + margin.right)
-                    .append("g")
+                        .attr("preserveAspectRatio", "xMinYMin meet")
+                        .attr('class', 'svg-content-responsive')
+        var svg = svg_div.append("g")
                         .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
         var clip = svg.append("defs")               // limit the plots to a visible area.
@@ -876,9 +950,19 @@ console.log('deterdash loaded.');
 
         var paused = false;
 
+        function redraw() {
+            var w = plot_div.clientWidth;
+            var h = plot_div.clientHeight;
+            svg_div.attr("width", w).attr("height", h);
+            console.log("resizing svg: " + w + ". " + h);
+        }
+
+        window.addEventListener("resize", redraw);
+
         // Grab the node names from the server and create the plot for the node data. 
         $(document).ready(function() {
             build_plot();
+            redraw();
         });
 
         // Build the units dropdown menu and update the panel title. 

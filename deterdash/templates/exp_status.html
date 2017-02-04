@@ -1,0 +1,19 @@
+{% extends "dashboard.html" %}
+
+{% block metric_title %}
+<h1 class="page-header"><i class="fa fa-bar-chart-o fa-fw"></i> Experiment Status </i>
+{% endblock %}
+
+{% block content %}
+
+<div id="exp_status_id">
+    <h3>There will be useful information here.</h3>
+</div>
+
+<script type="text/javascript">
+    var subtitle = ""
+    deterdash.set_title(".content-header", "fa-clock-o", "Experiment Status", subtitle)
+    deterdash.generate_exp_status("#exp_status_id")
+</script>
+{% endblock %}
+
