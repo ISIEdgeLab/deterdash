@@ -46,6 +46,13 @@ def show_viz(endpoint, agentname):
     return render_template('blank.html')
 
 #
+# A general status page. 
+#
+@app.route('/viz/exp_status')
+def exp_status():
+    return render_template('exp_status.html')
+
+#
 # a path just for graphs is not good. 
 #
 @app.route('/viz/graphs/<agent>')
