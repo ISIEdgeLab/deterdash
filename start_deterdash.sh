@@ -92,7 +92,7 @@ if [[ -e ${mount_dir}/deterdash ]]; then
     rm -rf ${mount_dir}/deterdash > /dev/null 2>&1; 
 fi
 
-if ! git clone ${REPODIR} > /dev/null 2>&1; then
+if ! git clone ${REPODIR} ${mount_dir}/deterdash > /dev/null 2>&1; then
     echo Unable to clone deterdash. Exiting.
     exit 20
 else
@@ -109,6 +109,7 @@ for p in python-flask python-pymongo; do
     fi
 done
 
+# GTL - hacky!
 python -c 'import libdeterdash' 2>&1 | grep ImportError > /dev/null
 if [[ $? -ne 1 ]]; then 
     echo ${LIBDETERDASH_INSTALL} /tmp $(dirname ${LIBDETERDASH_INSTALL})
@@ -143,7 +144,8 @@ echo Running websocketd on port 5001
 popd > /dev/null 2>&1
 
 # ...and we might as well do this in case it's not been done elsewhere.
-${DASHDIR}/bin/createMagiDBIndexes.sh
+echo Indexing Magi database.
+${DASHDIR}/bin/createMagiDBIndexes.sh > /dev/null 2>&1
 
 # # wait a few seconds and see if it's still running. 
 # echo Pausing 5 second to confirm deterdash is still running...
