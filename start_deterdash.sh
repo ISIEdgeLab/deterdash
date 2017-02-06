@@ -36,6 +36,11 @@ while getopts :e:m:p:ix:irvkchs opt; do
     esac
 done
 
+if [[ $(hostname -s) == users ]]; then 
+    echo Do not run this script on users. Run it as root on a control node in an experiment.
+    exit 3
+fi
+
 if [[ $(id -u) != 0 ]]; then
     echo This script must be run as root. Exiting.
     exit 5
