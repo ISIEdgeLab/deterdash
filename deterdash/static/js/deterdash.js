@@ -1844,6 +1844,11 @@ console.log('deterdash loaded.');
             svg.style("cursor", "move");
         }
 
+
+        function click_node(d) {
+            console.log("node clicked: " + d)
+        }
+
         function link_attrs(d) {
             var atts = {};
             // Straight black slightly less opaque line.
