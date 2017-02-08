@@ -1207,7 +1207,7 @@ console.log('deterdash loaded.');
             }
     }
     
-    deterdash. route_topology = function(agent_name, route_divid, node_panels_id, clear_routes_menu_id, 
+    deterdash.route_topology = function(agent_name, route_divid, node_panels_id, clear_routes_menu_id, 
                                          clear_route_button_id, display_route_button_id, title_divid,
                                          choose_nodes_divid) {
             var win_w = $(route_divid).width(),
@@ -1637,5 +1637,242 @@ console.log('deterdash loaded.');
             });
     } // end route_topology
 
+    // Lot of duplicate topology code here. It'll have to be refactored and combined with the otehr 
+    // topolgy code at some point. 
+    deterdash.generate_topology = function(agent_name, topo_divid, chart_title_divid) {
+        var win_w = $(topo_divid).width(),
+            win_h = $(topo_divid).height();
+        var margin = {top: 5, right: 5, bottom: 5, left: 5};
+
+        var node_rad = 10,
+            node_gap = 5;
+
+        var newest_zoom = null;
+
+        var node = null,
+            link = null,
+            nodes = [],
+            links = [],
+            node_label = null;
+
+        var simulation = d3.forceSimulation()
+            .force("link", d3.forceLink()
+                // .distance(60)
+                // .strength(0.7)
+                .id(function(d) { return d.id; }))
+            // .force("collision", d3.forceCollide()
+            //      .radius(function(d) { return node_rad+node_gap }).iterations(16))
+            .force("charge", d3.forceManyBody().distanceMax(150))
+            .force("center", d3.forceCenter(win_w/2, win_h/2))
+            .on("tick", ticked)
+
+        var svg = d3
+            .select(topo_divid)
+            .append("svg")
+            .attr("cursor", "move")
+            .call(d3.zoom().scaleExtent([0.5, 10]).on("zoom", zoomed));
+
+        // build the arrow.
+        svg.append("svg:defs").selectAll("marker")
+                .data(["end"])      // Different link/path types can be defined here
+            .enter().append("svg:marker")    // This section adds in the arrows
+                .attr("id", String)
+                .attr("viewBox", "0 -5 10 10")
+                .attr("refX", 15)
+                .attr("refY", -1.5)
+                .attr("markerWidth", 6)
+                .attr("markerHeight", 6)
+                .attr("orient", "auto")
+            .append("path")
+                .attr("d", "M0,-5L10,0L0,5");
+
+        d3.select(window).on("resize", resize);
+
+        var link_selection = svg.append("g").attr("class", "links");
+        var node_selection = svg.append("g").attr("class", "nodes");
+
+        resize();   // set initial size.
+
+        function resize() {
+            var win_w = $(topo_divid).width(),
+                win_h = $(topo_divid).height();
+
+            svg.attr("width", win_w - margin.left - margin.right)
+               .attr("height", win_h - margin.top - margin.bottom);
+        }
+
+        function zoomed() {
+            newest_zoom = d3.event.transform;
+            node_selection.selectAll(".node").attr("transform", newest_zoom); 
+            link_selection.selectAll("path").attr("transform", newest_zoom);
+        }
+
+        function dragstarted(d) {
+            if (!d3.event.active) simulation.alphaTarget(0.1).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+
+        function dragged(d) {
+            d.fx = d3.event.x;
+            d.fy = d3.event.y;
+        }
+
+        function dragended(d) {
+            if (!d3.event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        }
+
+        var exp_name_promise = new Promise(
+            function(resolve, reject) {
+                d3.json(window.location.origin + '/api/exp_info',
+                    function(error, json) {
+                        if(error) reject(error); 
+                        else if (json.status !== 0) {
+                            // This can happen if the correct agent is not running.
+                            reject('server did not give us the exp info.');
+                        }
+                        else {
+                            console.log("got exp_info: ", json); 
+                            resolve(json);
+                        }
+                    }
+                );
+            }
+        ).then(
+            function(expinfo) {
+                $(chart_title_divid).html("Experiment: <b>" + expinfo.project + " / "
+                    + expinfo.experiment + "</b>"); 
+            }, 
+            function(message, error) {
+                $(chart_title_divid).html("Topology"); 
+                console.log(message, error);
+            }
+        );
+
+        var load_topology_promise = new Promise(
+            function(resolve, reject) {
+                d3.json(window.location.origin + '/api/topology/' + agent_name, 
+                    function(error, json) {
+                        if (error) reject(error);
+                        else if (json.status !== 0) reject("server did not give the topology");
+                        else resolve(json)
+                    }
+                );
+            }
+        ); 
+            
+        load_topology_promise.then(function load_topology(json) {
+            // build the nodes and links teh way the graph widget wants them
+            for(var i = 0; i < json['nodes'].length; i++) {
+                var n = json['nodes'][i];
+                nodes.push({name: n, id: i});
+            }
+            for(var i = 0; i <  json['edges'].length; i++) {
+                var s = json['edges'][i][0]
+                var t = json['edges'][i][1]
+                var si = json['nodes'].indexOf(s);
+                var ti = json['nodes'].indexOf(t);
+                var name = s + '-' + t
+                console.log('adding link', s, t, name);
+                links.push({source: si, target: ti, name: name, linknum: null});
+            }
+
+            update_topo();
+        });
+
+        function update_topo() {
+            console.log("updating topology");
+
+            // var link = link_selection.selectAll("path").data(links).enter()
+            var link = link_selection.selectAll("path").data(links)
+            var node = node_selection.selectAll(".node").data(nodes).enter().append("g").attr("class", "node")
+
+            // update link attrs for existing links.
+            link.attrs(function(d) { return link_attrs(d); }); 
+
+            // enter (new links) - create link DOM.
+            link.enter().append("path")
+                .attr("class", "link")
+                .attr("fill", "none")
+                .attr("transform", newest_zoom);   // make sure to translate new links/paths.
+
+            node.append("circle")
+                .attr("r", "6")
+                .attr("fill", function(d) { return get_node_fill(d); })
+                .attr("stroke", function(d) { return get_node_stroke(d); })
+                .on("click", function(d) { click_node(d); })
+                .call(d3.drag()
+                        .on("start", dragstarted)
+                        .on("drag", dragged)
+                        .on("end", dragended))
+
+            node.append("text")
+                .attr("x", 12)
+                .attr("dy", ".35em")
+                .attr("font", "10px sans-serif")
+                .attr("pointer-events", "none")
+                .attr("fill", "black")
+                .text(function(d) { return d.name })
+
+            node.on("mouseover", function(d) { set_highlight(d); })
+                .on("mouseout", function(d) { exit_highlight(d); })
+
+            // remove links no longer in the DOM.
+            link.exit().remove(); 
+            node.exit().remove();
+
+            simulation.nodes(nodes);
+            simulation.force("link").links(links);
+            simulation.restart();
+        };  // end of update_topo()
+
+        function get_node_stroke(d) {
+            return "blue";
+        }
+
+        function get_node_fill(d) {
+            return "#8be47c";
+        }
+
+        function set_highlight(d) {
+            svg.style("cursor", "pointer");
+        }
+
+        function exit_highlight(d) {
+            svg.style("cursor", "move");
+        }
+
+        function link_attrs(d) {
+            var atts = {};
+            // Straight black slightly less opaque line.
+            atts["d"] = "M" + d.source.x + "," + d.source.y + "L" + d.target.x + "," + d.target.y;
+            atts["stroke"] = "black";
+            atts["stroke-opacity"] = 0.25;
+            atts["stroke-width"] = 1.0; 
+            atts["marker-end"] = "url(#end)";
+            return atts
+        }
+
+        function ticked() {
+            var link = link_selection.selectAll("path");
+            var node = node_selection.selectAll(".node");
+            var circle = node.selectAll("circle");
+
+            link.attrs(function(d) { return link_attrs(d); }); 
+
+            // node.attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; })
+            node.selectAll("circle").attr("cx", function(d) { return d.x; })
+            node.selectAll("circle").attr("cy", function(d) { return d.y; })
+            node.selectAll("text").attr("x", function(d) { return d.x + 8; })
+            node.selectAll("text").attr("y", function(d) { return d.y; })
+
+            circle.attr("fill", function(d) { return get_node_fill(d); })
+                  .attr("stroke", function(d) { return get_node_stroke(d); })
+        }
+    } // end of generate_topology()
+
+    // And now finally return the bigly deterdash instance.
     return deterdash;
 })(window);
