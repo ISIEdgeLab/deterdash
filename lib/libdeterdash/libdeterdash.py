@@ -25,6 +25,8 @@ class DeterDashboard(object):
     # The supported datatypes
     time_plot_type = 'time_plot'
     force_directed_graph_type = 'force_directed_graph'
+    link_annotation_type = 'link_annotation'
+    node_annotation_type = 'nodw_annotation'
 
     # Where we keep IDLs
     viz_idl_table = 'viz_data_idl'
@@ -33,6 +35,7 @@ class DeterDashboard(object):
         pass
 
     def add_time_plot(self, display, table, node_key, units):
+        log.info('Adding time plot {}'.format(display))
         # sanity check the units.
         if type(units) is not list:
             log.error('units argument is not a list')
@@ -62,6 +65,7 @@ class DeterDashboard(object):
     def add_topology(self, display, table, node_key, edges_key, template=None, extra_keys=None):
         '''Add a topology to the GUI. table_keys is a list of keys which identify the table.
         node_key and edges_key identify the nodes and edges data.'''
+        log.info('Adding topology {}'.format(display))
         template = 'force_graph.html' if not template else template
         viz_collection = database.getCollection(DeterDashboard.viz_data_table)
         viz_collection.insert({
@@ -74,6 +78,32 @@ class DeterDashboard(object):
             'template': template
         })
 
+
+    def add_link_annotation(self, display, table, edge_key, data_key):
+        '''Given the table and keys, annotate the given link with the given data. The edge_key 
+        must point to a table entry that is a tuple of (node A name, node B name). Links are 
+        asymetric (the toplogy is a directed graph).''' 
+        log.info('Adding link annotation {}'.format(display))
+        c = database.getCollection(DeterDashboard.viz_data_table)
+        c.insert({
+            'datatype': DeterDashboard.link_annotation_type,
+            'display': display,
+            'table': table,
+            'edge_key': edge_key,
+            'data_key': data_key
+        })
+
+    def add_node_annotation(self, display, table, node_key, data_key):
+        '''Given the table and keys, annotate the given node with the given data.'''
+        log.info('Adding node annotation {}'.format(display))
+        c = database.getCollection(DeterDashboard.viz_data_table)
+        c.insert({
+            'datatype': DeterDashboard.node_annotation_type,
+            'display': display,
+            'table': table,
+            'edge_key': edge_key,
+            'data_key': data_key
+        })
 
     def get_topology_keys(self, agent):
         '''Given the agent, return the keys needed to extract the nodes and edges from the DB.'''
