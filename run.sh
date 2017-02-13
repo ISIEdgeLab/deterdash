@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Use AGENTSDIR if set, else the dir below.
-AGENTS_DIR=${AGENTS_DIR:-/users/glawler/src/edgect/magi/agents}
+AGENTS_DIR=${AGENTS_DIR:-/proj/edgect/magi/modules}
 
 for p in python-flask python-pymongo; do
     if [ $(dpkg-query -W -f='${Status}' nano 2>/dev/null | grep -c "ok installed") -eq 0 ]; then
