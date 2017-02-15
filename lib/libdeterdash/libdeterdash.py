@@ -78,7 +78,6 @@ class DeterDashboard(object):
             'template': template
         })
 
-
     def add_link_annotation(self, display, table, edge_key, data_key):
         '''Given the table and keys, annotate the given link with the given data. The edge_key 
         must point to a table entry that is a tuple of (node A name, node B name). Links are 
