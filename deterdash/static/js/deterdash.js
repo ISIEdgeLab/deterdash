@@ -1879,9 +1879,5 @@ console.log('deterdash loaded.');
     } // end of generate_topology()
 
     // And now finally return the bigly deterdash instance.
-======
->>>>>>> 1b6f0e9535b758588acaf78b899ed1572d9e7fc2
-=======
->>>>>>> 1b6f0e9535b758588acaf78b899ed1572d9e7fc2
     return deterdash;
 })(window);
