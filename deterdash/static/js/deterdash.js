@@ -1207,11 +1207,7 @@ console.log('deterdash loaded.');
             }
     }
     
-<<<<<<< HEAD
     deterdash.route_topology = function(agent_name, route_divid, node_panels_id, clear_routes_menu_id, 
-=======
-    deterdash. route_topology = function(agent_name, route_divid, node_panels_id, clear_routes_menu_id, 
->>>>>>> 1b6f0e9535b758588acaf78b899ed1572d9e7fc2
                                          clear_route_button_id, display_route_button_id, title_divid,
                                          choose_nodes_divid) {
             var win_w = $(route_divid).width(),
@@ -1641,7 +1637,6 @@ console.log('deterdash loaded.');
             });
     } // end route_topology
 
-<<<<<<< HEAD
     // Lot of duplicate topology code here. It'll have to be refactored and combined with the otehr 
     // topolgy code at some point. 
     deterdash.generate_topology = function(agent_name, topo_divid, chart_title_divid) {
@@ -1884,6 +1879,8 @@ console.log('deterdash loaded.');
     } // end of generate_topology()
 
     // And now finally return the bigly deterdash instance.
+======
+>>>>>>> 1b6f0e9535b758588acaf78b899ed1572d9e7fc2
 =======
 >>>>>>> 1b6f0e9535b758588acaf78b899ed1572d9e7fc2
     return deterdash;
