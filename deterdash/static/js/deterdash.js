@@ -968,7 +968,7 @@ console.log('deterdash loaded.');
         // Build the units dropdown menu and update the panel title. 
         var build_units_drop_down = function() {
             // GTL for testing - add random data to plot (server side)
-            data_units.push({display: "random", data_key: "random"})
+            // data_units.push({display: "random", data_key: "random"})
             set_chart_title(data_units[0]);
             var dropdown = d3.select(chart_units_dropdown_id)
                 .selectAll("li")
