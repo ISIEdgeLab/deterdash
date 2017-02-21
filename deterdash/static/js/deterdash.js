@@ -905,6 +905,7 @@ console.log('deterdash loaded.');
             y_ext = [0, 100];       // just a guess - will be updated as data comes in.
 
         var path_color = d3.scaleOrdinal(d3.schemeCategory10)
+        var next_color = 0;
 
         // var x_scale = d3.scaleTime().domain(x_ext).range([0, width])
         var x_scale = d3.scaleTime()
@@ -1111,13 +1112,14 @@ console.log('deterdash loaded.');
                                 var node = {
                                     name: data[data_i].node,
                                     data: [],
-                                    color:path_color(nodes.length)
+                                    color:path_color(next_color)
                                 }; 
                                 node.path = paths.append("path")
-                                        .attr("stroke", path_color(nodes.length))
+                                        .attr("stroke", path_color(next_color))
                                         .attr("fill", "none");
 
                                 nodes.push(node);
+                                next_color += next_color+1 % path_color.range().length
                                 // reset node_i for test below.
                                 node_i = nodes.findIndex(function(n) { return n.name === data[data_i]["node"]; })
                             }
@@ -1146,7 +1148,6 @@ console.log('deterdash loaded.');
                                 // var pathname = nodes[node_i].name
                                 nodes[node_i].path.remove()
                                 nodes.splice(node_i, 1)
-                                // document.querySelectorAll("[pathname=" + pathname + "]").remove()
                             } else {
                                 // We should not ahve to do this, but here we are.
                                 nodes[node_i].data.sort(function(d1, d2) { if(d1.t < d2.t) return -1; return 1;});
