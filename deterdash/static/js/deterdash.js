@@ -1028,7 +1028,7 @@ console.log('deterdash loaded.');
             // update (a node may have come or gone...)
             legend
                 .attr("transform", function(d, i) {
-                    var h = legend_rect_size;
+                    var h = legend_rect_size + legend_spacing;
                     var x = 30;
                     var y = i * h;
                     // console.log("leg: " + d.name + " @ " + i)
@@ -1040,7 +1040,7 @@ console.log('deterdash loaded.');
                 .append("g")
                 .classed("legend", true)
                 .attr("transform", function(d, i) {
-                    var h = legend_rect_size;
+                    var h = legend_rect_size + legend_spacing;
                     var x = 30;
                     var y = i * h;
                     return "translate(" + x + "," + y + ")";
