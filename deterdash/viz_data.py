@@ -77,7 +77,6 @@ def get_viz_agent_nodes(datatype, agentname):
     nodes.sort()
     return nodes
 
-
 def get_viz_agent(datatype, agentname):
     '''Get a specific agent. e.g. the pkt_count agent's data for time plot.'''
     db = magi_db()
@@ -87,7 +86,6 @@ def get_viz_agent(datatype, agentname):
     ).sort([('created', 1)])
 
     return list(cursor)[0]
-
 
 def get_viz_agents(datatype):
     '''Get all agents given a specific datatype (GUI instance, graph, chart, etc).'''

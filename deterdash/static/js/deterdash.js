@@ -961,7 +961,8 @@ console.log('deterdash loaded.');
 
         // Grab the node names from the server and create the plot for the node data. 
         $(document).ready(function() {
-            build_plot();
+            // start getting data updates and update the paths.
+            read_node_data(null)
             redraw();
         });
 
@@ -1017,78 +1018,47 @@ console.log('deterdash loaded.');
 
         }();  // actaully call the function. 
 
-        function build_plot() {
-            var get_node_names = new Promise(
-                function(resolve, reject) {
-                    var url = window.location.origin + "/api/time_plot/" + agent + "/nodes";
-                    console.log("calling ", url)
-                    d3.json(url, 
-                        function(error, json) {
-                            if (error) {
-                                console.log('nodes error', error);
-                                reject(error); 
-                            } else if (json.status !== 0) {
-                                reject('NO data receieved. Is the agent running?');
-                            } else {
-                                console.log('got nodes msg', json);
-                                resolve(json); 
-                            }
-                        }
-                    )
-                }
-            );
+        function build_legend(nodes) {
+            // create the legend now that we know the node names and colors. 
+            // console.log("legend nodes: ", nodes)
+            legend = svg.selectAll(".legend")
+                .data(nodes, function(d) { return d.name })
 
-            get_node_names.then(
-                function(json) {
-                    console.log("read nodes: ", json['nodes']); 
-                    if (nodes.length !== 0) {
-                        nodes.splice(0, nodes.length)
-                    }
-                    // create the nodes.
-                    for (var i=0; i<json['nodes'].length; i++) {
-                        var node = {
-                            name: json['nodes'][i],
-                            data: [],         // array of time, value pairs: [{t1, v1}, {t2, v2}...{tn, vn}]
-                            color:path_color(i)
-                        }; 
-                        node.path = paths.append("path")
-                                         // .data([node.data])
-                                         .attr("stroke", path_color(i))
-                                         .attr("fill", "none"); 
-                        nodes.push(node);
-                    }
-                    // create the legend now that we know the node names and colors. 
-                    legend = svg.selectAll(".legend")
-                            .data(nodes)
-                            .enter()
-                            .append("g")
-                            .classed("legend", true)
-                            .attr("transform", function(d, i) {
-                                var height = legend_rect_size + legend_spacing;
-                                var offset = height * nodes.length / 4; 
-                                var horz = 2 * legend_rect_size;
-                                var vert = i * height + offset - 30; 
-                                return "translate(" + horz + "," + vert + ")";
-                            });
+            // update (a node may have come or gone...)
+            legend
+                .attr("transform", function(d, i) {
+                    var h = legend_rect_size;
+                    var x = 30;
+                    var y = i * h;
+                    // console.log("leg: " + d.name + " @ " + i)
+                    return "translate(" + x + "," + y + ")";
+                })
 
-                    legend.append("rect")
-                           .attr("width", legend_rect_size)
-                           .attr("height", legend_rect_size)
-                           .style("fill", function(d) { return d.color; })
-                           .style("stroke", function(d) { return d.color; })
+            var leg_enter = legend
+                .enter()
+                .append("g")
+                .classed("legend", true)
+                .attr("transform", function(d, i) {
+                    var h = legend_rect_size;
+                    var x = 30;
+                    var y = i * h;
+                    return "translate(" + x + "," + y + ")";
+                })
 
-                    legend.append("text")
-                          .attr('x', legend_rect_size + legend_spacing)
-                          .attr('y', legend_rect_size - legend_spacing)
-                          .text(function(d) { return d.name; })
+            leg_enter
+                .append("rect")
+                .attr("width", legend_rect_size)
+                .attr("height", legend_rect_size)
+                .style("fill", function(d) { return d.color; })
+                .style("stroke", function(d) { return d.color; })
 
-                    // start getting data updates and update the paths.
-                    read_node_data(null)
-                }, 
-                function(message, error) {
-                    console.log(message, error); 
-                }
-            )
+            leg_enter
+                .append("text")
+                .attr('x', legend_rect_size + legend_spacing)
+                .attr('y', legend_rect_size - legend_spacing)
+                .text(function(d) { return d.name; })
+
+            legend.exit().remove()
         }
 
         function read_node_data(then) {
@@ -1099,13 +1069,13 @@ console.log('deterdash loaded.');
 
                     // If we have fewer datapoints than the limit, just get all the datra OR
                     // first time request limit of data, after just request the new stuff.
-                    if (nodes[0].data.length < limit/1000 || !then) {
+                    if (!nodes.length || nodes[0].data.length < limit/1000 || !then) {
                         var start = new Date(now-limit);
                         nodes.forEach(function(n) { n.data.splice(0, n.data.length); });
                     } else {
                         var start = new Date(then);  // just get the new data. 
                     }
-                    console.log("requesting data for period ", start, " to ", now); 
+                    // console.log("requesting data for period ", start, " to ", now); 
 
                     var url = window.location.origin + "/api/" + datatype + "/json?";
                     url += 'start=' + Math.floor(start/1000);   // server speaks seconds not ms.
@@ -1113,7 +1083,7 @@ console.log('deterdash loaded.');
                     url += '&step=' + 1;                        // one second steps. 
                     url += '&metric=' + data_key;
                     url += '&agent=' + agent;
-                    console.log("requesting url: ", url); 
+                    // console.log("requesting url: ", url); 
                     d3.json(url, function(error, json) {
                         if (error) { 
                             console.log('error', error);
@@ -1136,30 +1106,61 @@ console.log('deterdash loaded.');
                         var y_exts = []; 
                         for (var data_i in data) { 
                             var node_i = nodes.findIndex(function(n) { return n.name === data[data_i]["node"]; })
+                            if (node_i == -1) {
+                                // Don't ignore new nodes - add them in!
+                                var node = {
+                                    name: data[data_i].node,
+                                    data: [],
+                                    color:path_color(nodes.length)
+                                }; 
+                                node.path = paths.append("path")
+                                        .attr("stroke", path_color(nodes.length))
+                                        .attr("fill", "none");
+
+                                nodes.push(node);
+                                // reset node_i for test below.
+                                node_i = nodes.findIndex(function(n) { return n.name === data[data_i]["node"]; })
+                            }
                             if (node_i !== -1) {
                                 if (data[data_i].values.length > 0) {
                                     // merge new data.
-                                    nodes[node_i].data.push.apply(nodes[node_i].data, data[data_i].values);
-                                    // We should not ahve to do this, but here we are.
-                                    nodes[node_i].data.sort(function(d1, d2) { if(d1.t < d2.t) return -1; return 1;});
+                                    Array.prototype.push.apply(nodes[node_i].data, data[data_i].values);
                                     // keep track of max/min for x and y for this path.
                                     y_exts.push.apply(y_exts, d3.extent(nodes[node_i].data, function(d) { 
                                         return d.value; 
                                     }));
-                                    // now update the path in the svg with current data.
-                                    nodes[node_i].path.attr("d", line(nodes[node_i].data))
                                 }
                             }
                             else {
-                                console.log('ERROR: Got data for a node we know nothning about.')
+                                console.log("This should not happen: unable to find node data to update for ",
+                                data[data_i])
                             }
                         }
+
                         if (y_exts.length !== 0) y_ext = d3.extent(y_exts);
+
+                        // Now iterate over nodes and adjust/remove/sort as needed with the new data.
+                        for (var node_i in nodes) { 
+                            if (nodes[node_i].data.length == 0) {
+                                console.log('Removing node - no more data', nodes[node_i])
+                                // var pathname = nodes[node_i].name
+                                nodes[node_i].path.remove()
+                                nodes.splice(node_i, 1)
+                                // document.querySelectorAll("[pathname=" + pathname + "]").remove()
+                            } else {
+                                // We should not ahve to do this, but here we are.
+                                nodes[node_i].data.sort(function(d1, d2) { if(d1.t < d2.t) return -1; return 1;});
+                                // now update the path in the svg with current data.
+                                nodes[node_i].path.attr("d", line(nodes[node_i].data))
+                            }
+                        }
                     }, 
                     function(error) {
                         console.log(error);
                     }
                 )
+
+                build_legend(nodes);
 
                 // update the plots. 
                 x_scale.domain([new Date(now - limit), now])
@@ -1173,11 +1174,10 @@ console.log('deterdash loaded.');
                 yaxis.call(d3.axisLeft(y_scale).tickFormat(d3.format(',.2s')))
 
                 xaxis.transition()
-                    .duration(duration)
-                    .ease(d3.easeLinear)
-                    .call(d3.axisBottom(x_scale).tickFormat(d3.timeFormat("%H:%M:%S")))
+                .duration(duration)
+                .ease(d3.easeLinear)
+                .call(d3.axisBottom(x_scale).tickFormat(d3.timeFormat("%H:%M:%S")))
 
-                // paths.selectAll("path")
                 paths.attr('transform', null)
                     .transition()
                     .duration(duration)
@@ -1189,23 +1189,21 @@ console.log('deterdash loaded.');
                             // lines will be in the correct place while waiting for new data to arrive.
                             var post_trans = new Date()
                             x_scale.domain([new Date(post_trans - limit), post_trans])
+
+                            // remove old data and update the line.
                             nodes.forEach(function(n) { 
-                                var killto = n.data.findIndex(function(d) {
-                                    return d.t >= (post_trans-limit)/1000;
+                                n.data = n.data.filter(function(d) { 
+                                    return d.t > (post_trans-limit)/1000
                                 })
-                                if (killto > 0) {
-                                    n.data.splice(0, killto) 
-                                    n.path.attr("d", line(n.data)); 
-                                }
+                                n.path.attr("d", line(n.data))
                             });
                             // get new data. 
                             read_node_data(now);
                         }
                         // else the button handler for the "start" button will call read_node_data(null);
                     });
-
-            }
-    }
+        } // end of read_data
+    } // end of spawn_time_plot
     
     deterdash.route_topology = function(agent_name, route_divid, node_panels_id, clear_routes_menu_id, 
                                          clear_route_button_id, display_route_button_id, title_divid,

@@ -33,7 +33,8 @@ def get_viz_time_plot_data(start, stop, step, node, metric, agent):
         values = []
         for n in node:
             data = get_viz_time_plot_data_node(start, stop, step, n, metric, agent)
-            values.append({'node': n, 'values': data['values']})
+            if data:
+                values.append({'node': n, 'values': data['values']})
 
         return sorted(values, key=lambda v: v['node'])
     
@@ -74,10 +75,13 @@ def get_viz_time_plot_data_node(start, stop, step, node, metric, agent):
 
     # now we have sorted data. We need to match the requested time slots with
     # the requested data. The DB data may be sparse so start with 0.0 values for all points.
-    data = {t: 0.0 for t in xrange(start, stop, step)}
+    # data = {t: 0.0 for t in xrange(start, stop, step)}
+    data = {}
     if cursor.alive:
         for row in cursor:
             data[int(row['created'])] = row[metric]
 
-    # return {'node': node, 'values': data}
-    return {'node': node, 'values': [{"t": k, "value": v} for k, v in data.iteritems()]}
+    if data:
+        return {'node': node, 'values': [{"t": k, "value": v} for k, v in data.iteritems()]}
+
+    return None
