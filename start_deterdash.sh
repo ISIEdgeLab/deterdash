@@ -94,14 +94,15 @@ fi
 
 # update on rerun.
 if [[ -e ${mount_dir}/deterdash ]]; then 
-    rm -rf ${mount_dir}/deterdash > /dev/null 2>&1; 
-fi
-
-if ! git clone ${REPODIR} ${mount_dir}/deterdash > /dev/null 2>&1; then
-    echo Unable to clone deterdash. Exiting.
-    exit 20
+    echo Updating deterdash repository before restarting.
+    (cd ${mount_dir}/deterdash && git pull)
 else
-    echo Cloned deterdash.
+    if ! git clone ${REPODIR} ${mount_dir}/deterdash > /dev/null 2>&1; then
+        echo Unable to clone deterdash. Exiting.
+        exit 20
+    else
+        echo Cloned deterdash.
+    fi
 fi
 
 # Install dependencies of deterdash (stolen from deterdash run.sh script).
