@@ -1,0 +1,2 @@
+The install.sh script will stage the library when run on users. On a testnode, it will install
+the library.
