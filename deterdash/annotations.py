@@ -7,7 +7,7 @@ from db import magi_db
 
 log = logging.getLogger(__name__)
 
-def _get_topo_anno_keys(agent):
+def get_topo_anno_units(agent):
     # example viz_data entry for the topology_annotation type.
     #    { "_id" : ObjectId("58b5a28091cbf15823d0e579"), "created" : 1488298624.750974, 
     # "datatype" : "topology_annotation", "agent" : "viz_data", "host" : "vrouter", "key" : "edge", 
@@ -20,22 +20,20 @@ def _get_topo_anno_keys(agent):
     #   "display" : "Click Configuration" } 
     db = magi_db()
     col = db.experiment_data.find_one({
-        datatype: 'topology_annotation',
-        table: agent,
-        agent: 'viz_data'
+        'datatype': 'topology_annotation',
+        'table': agent,
+        'agent': 'viz_data'
     }, {
-        _id: False,
-        data_key: True
+        '_id': False,
+        'data_key': True,
+        'display': True
     })
 
     if not col:
         return None, None
 
-    return col['key'], col['data_key']
+    return col['display'], col['data_key']
 
-def get_topo_anno_units(agent):
-    _, units = _get_topo_anno_units(agent)
-    return units
 
 def get_topology_annotations(agent, key):
     log.debug('getting topo annotations for agent {}'.format(agent))

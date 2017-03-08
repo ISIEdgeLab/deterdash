@@ -4,7 +4,7 @@ from flask import render_template, jsonify, request
 
 from . import app
 from .topology import get_topology
-from .annotations import get_topology_annotations
+from .annotations import get_topology_annotations, get_topo_anno_units
 from .routing import get_route_tables, get_route_path
 from .viz_data import get_viz_ui_types, get_viz_agents, get_viz_agent, get_node_viztypes
 from .viz_data import get_node_agents
@@ -127,6 +127,14 @@ def api_topology_annotation(agent, key):
         return jsonify(status=1, error='Error reading topology annotations for {}/{}'.format(agent, key))
 
     return jsonify(status=0, key=key, agent=agent, data=annos)
+
+@app.route('/api/topo_anno/<agent>/units')
+def topo_anno_units(agent):
+    display, units = get_topo_anno_units(agent)
+    if not units:
+        return jsonify(status=1, error='data not found')
+
+    return jsonify(status=0, units=units, display=display)
 
 @app.route('/api/exp_nodes')
 def exp_nodes():

@@ -893,8 +893,7 @@ console.log('deterdash loaded.');
         d3.select(id).text(chart_title);
     }
 
-    deterdash.spawn_time_plot = function(agent_json, plot_divid, chart_title_id, 
-                chart_units_dropdown_id, control_btn_group_id) {
+    deterdash.spawn_time_plot = function(agent_json, plot_divid, chart_title_id, control_btn_group_id) {
         console.log('agent_json', agent_json); 
         var nodes = [];   // array of dict of node data.
         var data_key = agent_json.units[0].data_key; 
@@ -971,16 +970,19 @@ console.log('deterdash loaded.');
         // Grab the node names from the server and create the plot for the node data. 
         $(document).ready(function() {
             // start getting data updates and update the paths.
+            set_chart_title(data_units[0], chart_title_id)
             read_node_data(null)
             redraw();
         });
 
         // Build the units dropdown menu and update the panel title. 
-        deterdash.build_units_drop_down(chart_units_dropdown_id, chart_title_id, data_units,
-                            function(u) {
-                                data_key = u.data_key;
-                                nodes.forEach(function(n) { n.data.splice(0, n.data.length); });
-                            });
+        build_units_drop_down(
+            control_btn_group_id, 'Plot Units', data_units,
+                function(u) {
+                    data_key = u.data_key;
+                    set_chart_title(u, chart_title_id)
+                    nodes.forEach(function(n) { n.data.splice(0, n.data.length); });
+                });
 
         var build_pause_button = function() { 
             console.log("building pause button")
@@ -1194,452 +1196,474 @@ console.log('deterdash loaded.');
     } // end of spawn_time_plot
     
     deterdash.route_topology = function(agent_name, panel_id, panel_title_id, panel_btn_grp_id) {
+        var win_w = $(panel_id).width(),
+            win_h = $(panel_id).height();
+        var margin = {top: 5, right: 5, bottom: 5, left: 5};
+
+        var node_rad = 10,
+            node_gap = 5;
+
+        var clear_all_routes_menu_entry = {id: "clear_all_routes",
+                                           text: "All Routes", 
+                                           color: null, 
+                                           src: null, 
+                                           dst: null, 
+                                           slot: -1};
+        var selected_path_nodes = [],
+            path_slot = -1,
+            choosing_path = false,
+            route_color = d3.scaleOrdinal(d3.schemeCategory10),
+            route_dropdown_menu = [clear_all_routes_menu_entry]
+
+        var newest_zoom = null;
+
+        var node = null,
+            link = null,
+            nodes = [],
+            links = [],
+            node_label = null;
+
+        var simulation = d3.forceSimulation()
+            .force("link", d3.forceLink()
+            //    .distance(30)
+            //    .strength(0.9)
+                .id(function(d) { return d.id; }))
+            // .force("collision", d3.forceCollide()
+            //      .radius(function(d) { return node_rad+node_gap }).iterations(16))
+            .force("charge", d3.forceManyBody().distanceMax(150))
+            .force("center", d3.forceCenter(win_w/2, win_h/2))
+            .on("tick", ticked)
+
+        // a place to write messages to the user.
+        var message_area = d3.select(panel_id).append("div").attr('id', "message_area")
+
+        var svg = d3
+            .select(panel_id)
+            .append("svg")
+            .attr("cursor", "move")
+            .call(d3.zoom().scaleExtent([0.5, 10]).on("zoom", zoomed));
+
+        // build the arrow.
+        svg.append("svg:defs").selectAll("marker")
+                .data(["end"])      // Different link/path types can be defined here
+            .enter().append("svg:marker")    // This section adds in the arrows
+                .attr("id", String)
+                .attr("viewBox", "0 -5 10 10")
+                .attr("refX", 15)
+                .attr("refY", -1.5)
+                .attr("markerWidth", 6)
+                .attr("markerHeight", 6)
+                .attr("orient", "auto")
+            .append("path")
+                .attr("d", "M0,-5L10,0L0,5");
+
+        // add our stuff to the panel header.
+        var disp_route_button_id = 'disp_route_button',
+            clear_route_button_id = 'clear_route_button'
+
+        var panel_buttons = d3.select(panel_btn_grp_id)
+        panel_buttons.append('button').attr('type', 'button').attr('id', disp_route_button_id)
+            .classed('btn btn-default btn-xs disabled', true).text("Display Route")
+
+        var clear_dropdown = panel_buttons.append("div").classed("btn-group", true).attr('role', 'menu')
+        clear_dropdown.append('button').attr('type', 'button').attr('id', clear_route_button_id)
+            .classed('btn btn-xs btn-default dropdown-toggle disabled', true)
+            .attr('data-toggle', 'dropdown').attr('aria-haspopup', 'true').attr('aria-expanded', 'false')
+            .text("Clear Routes")
+            .append('span').classed('caret', true)
+
+        var route_dropdown_menu_selection = clear_dropdown.append('ul')
+            .classed('dropdown-menu', true)
+            .attr('aria-labelledby', clear_route_button_id)
+        
+        // resize 
+        d3.select(window).on("resize", resize);
+
+        var link_selection = svg.append("g").attr("class", "links");
+        var node_selection = svg.append("g").attr("class", "nodes");
+
+        resize();   // set initial size.
+
+        function resize() {
             var win_w = $(panel_id).width(),
                 win_h = $(panel_id).height();
-            var margin = {top: 5, right: 5, bottom: 5, left: 5};
 
-            var node_rad = 10,
-                node_gap = 5;
+            svg.attr("width", win_w - margin.left - margin.right)
+               .attr("height", win_h - margin.top - margin.bottom);
+        }
 
-            var clear_all_routes_menu_entry = {id: "clear_all_routes",
-                                               text: "All Routes", 
-                                               color: null, 
-                                               src: null, 
-                                               dst: null, 
-                                               slot: -1};
-            var selected_path_nodes = [],
-                path_slot = -1,
-                choosing_path = false,
-                route_color = d3.scaleOrdinal(d3.schemeCategory10),
-                route_dropdown_menu = [clear_all_routes_menu_entry]
+        function zoomed() {
+            newest_zoom = d3.event.transform;
+            node_selection.selectAll(".node").attr("transform", newest_zoom); 
+            link_selection.selectAll("path").attr("transform", newest_zoom);
+        }
 
-            var newest_zoom = null;
+        function dragstarted(d) {
+            if (!d3.event.active) simulation.alphaTarget(0.1).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
 
-            var node = null,
-                link = null,
-                nodes = [],
-                links = [],
-                node_label = null;
+        function dragged(d) {
+            d.fx = d3.event.x;
+            d.fy = d3.event.y;
+        }
 
-            var simulation = d3.forceSimulation()
-                .force("link", d3.forceLink()
-                //    .distance(30)
-                //    .strength(0.9)
-                    .id(function(d) { return d.id; }))
-                // .force("collision", d3.forceCollide()
-                //      .radius(function(d) { return node_rad+node_gap }).iterations(16))
-                .force("charge", d3.forceManyBody().distanceMax(150))
-                .force("center", d3.forceCenter(win_w/2, win_h/2))
-                .on("tick", ticked)
+        function dragended(d) {
+            if (!d3.event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        }
 
-            // a place to write messages to the user.
-            var message_area = d3.select(panel_id).append("div").attr('id', "message_area")
+        var exp_name_promise = new Promise(
+            function(resolve, reject) {
+                d3.json(window.location.origin + '/api/exp_info',
+                    function(error, json) {
+                        if(error) reject(error); 
+                        else if (json.status !== 0) {
+                            // This can happen if the correct agent is not running.
+                            reject('server did not give us the exp info.');
+                        }
+                        else {
+                            console.log("got exp_info: ", json); 
+                            resolve(json);
+                        }
+                    }
+                );
+            }
+        ).then(
+            function(expinfo) {
+                $(title_divid).html("Experiment: <b>" + expinfo.project + " / "
+                    + expinfo.experiment + "</b>"); 
+            }, 
+            function(message, error) {
+                $(panel_title_id).html("Topology"); 
+                console.log(message, error);
+            }
+        );
 
-            var svg = d3
-                .select(panel_id)
-                .append("svg")
-                .attr("cursor", "move")
-                .call(d3.zoom().scaleExtent([0.5, 10]).on("zoom", zoomed));
-
-            // build the arrow.
-            svg.append("svg:defs").selectAll("marker")
-                    .data(["end"])      // Different link/path types can be defined here
-                .enter().append("svg:marker")    // This section adds in the arrows
-                    .attr("id", String)
-                    .attr("viewBox", "0 -5 10 10")
-                    .attr("refX", 15)
-                    .attr("refY", -1.5)
-                    .attr("markerWidth", 6)
-                    .attr("markerHeight", 6)
-                    .attr("orient", "auto")
-                .append("path")
-                    .attr("d", "M0,-5L10,0L0,5");
-
-            // add our stuff to the panel header.
-            var disp_route_button_id = 'disp_route_button',
-                clear_route_button_id = 'clear_route_button'
-
-            var panel_buttons = d3.select(panel_btn_grp_id)
-            panel_buttons.append('button').attr('type', 'button').attr('id', disp_route_button_id)
-                .classed('btn btn-default btn-xs disabled', true).text("Display Route")
-
-            var clear_dropdown = panel_buttons.append("div").classed("btn-group", true).attr('role', 'menu')
-            clear_dropdown.append('button').attr('type', 'button').attr('id', clear_route_button_id)
-                .classed('btn btn-xs btn-default dropdown-toggle disabled', true)
-                .attr('data-toggle', 'dropdown').attr('aria-haspopup', 'true').attr('aria-expanded', 'false')
-                .text("Clear Routes")
-                .append('span').classed('caret', true)
-
-            var route_dropdown_menu_selection = clear_dropdown.append('ul')
-                .classed('dropdown-menu', true)
-                .attr('aria-labelledby', clear_route_button_id)
+        var load_topology_promise = new Promise(
+            function(resolve, reject) {
+                d3.json(window.location.origin + "/api/topology/" + agent_name, 
+                    function(error, json) {
+                        if (error) reject(error);
+                        else if (json.status !== 0) reject("server did not give the topology");
+                        else resolve(json)
+                    }
+                );
+            }
+        ); 
             
-            // resize 
-            d3.select(window).on("resize", resize);
-
-            var link_selection = svg.append("g").attr("class", "links");
-            var node_selection = svg.append("g").attr("class", "nodes");
-
-            resize();   // set initial size.
-
-            function resize() {
-                var win_w = $(panel_id).width(),
-                    win_h = $(panel_id).height();
-
-                svg.attr("width", win_w - margin.left - margin.right)
-                   .attr("height", win_h - margin.top - margin.bottom);
+        load_topology_promise.then(function load_topology(json) {
+            // build the nodes and links teh way the graph widget wants them
+            for(var i = 0; i < json['nodes'].length; i++) {
+                var n = json['nodes'][i];
+                nodes.push({name: n, id: i});
+            }
+            for(var i = 0; i <  json['edges'].length; i++) {
+                var s = json['edges'][i][0]
+                var t = json['edges'][i][1]
+                var si = json['nodes'].indexOf(s);
+                var ti = json['nodes'].indexOf(t);
+                var name = s + '-' + t
+                console.log('adding link', s, t, name);
+                links.push({source: si, target: ti, name: name, linknum: null});
             }
 
-            function zoomed() {
-                newest_zoom = d3.event.transform;
-                node_selection.selectAll(".node").attr("transform", newest_zoom); 
-                link_selection.selectAll("path").attr("transform", newest_zoom);
+            update_topo();
+            d3.select('#' + disp_route_button_id).classed("disabled", false); 
+        });
+
+        var topo_annotation_units_promise = new Promise(
+            function(resolve, reject) {
+                d3.json(window.location.origin + '/api/topo_anno/' + agent_name + '/units',
+                    function(error, json) { 
+                        if(error) reject(error)
+                        else if (json.status !== 0) reject("no topology annotions")
+                        else resolve(json)
+                    }
+                );
+            }
+        ); 
+
+        topo_annotation_units_promise.then(function(json) {
+            console.log('got topo anno units ', json)
+            // json == display: "title", units: list of unit structs.
+            build_units_drop_down(panel_btn_grp_id, json.display, json.units, 
+                function(u) { 
+                    console.log('Annotation chosen: ', u)
+                })
+            }
+        );
+
+        function remove_all_paths() {
+            console.log("removing all paths");
+            for(var i=0; i<links.length; i++) {
+                if (links[i].hasOwnProperty('route')) {
+                    console.log("removing link: ", links[i]);
+                    links.splice(i, 1);
+                    i--;   // we just removed an element.
+                }
+            }
+            for(var i=0; i<selected_path_nodes.length; i++) {
+                delete selected_path_nodes[i];  // set slot to undefined.
+            }
+            route_dropdown_menu.splice(0, route_dropdown_menu.length);  // kill all menu items.
+            route_dropdown_menu.push(clear_all_routes_menu_entry);
+            update_topo();
+        }
+
+        function handle_clear_route(d) {
+            console.log("removing path:" , d); 
+            if (d.id == "clear_all_routes") {
+                remove_all_paths();
+                return;
+            }
+            for(var i=0; i<links.length; i++) {
+                if (links[i].hasOwnProperty('route') && links[i].route === d.src + "-" + d.dst) {
+                    console.log("removing link: ", links[i]);
+                    links.splice(i, 1);
+                    i--;   // we just removed an element.
+                }
+            }
+            delete selected_path_nodes[d.slot];  // set slot to undefined. 
+            var i = route_dropdown_menu.findIndex(function(x) { return x.slot == d.slot; });
+            if (i != -1) { 
+                route_dropdown_menu.splice(i, 1);   // remove it here, will remove it from the menu.
+            } else {
+                console.log("unable to find in drop down menu: ", d); 
             }
 
-            function dragstarted(d) {
-                if (!d3.event.active) simulation.alphaTarget(0.1).restart();
-                d.fx = d.x;
-                d.fy = d.y;
-            }
+            update_topo();
+        }
 
-            function dragged(d) {
-                d.fx = d3.event.x;
-                d.fy = d3.event.y;
-            }
-
-            function dragended(d) {
-                if (!d3.event.active) simulation.alphaTarget(0);
-                d.fx = null;
-                d.fy = null;
-            }
-
-            var exp_name_promise = new Promise(
+        function show_path(path_slot) {
+            var path_show_promise = new Promise(
                 function(resolve, reject) {
-                    d3.json(window.location.origin + '/api/exp_info',
+                    var url = window.location.origin + '/api/routing/path?';
+                    url += "src=" + selected_path_nodes[path_slot].src.name;
+                    url += "&dst=" + selected_path_nodes[path_slot].dst.name;
+                    d3.json(url, 
                         function(error, json) {
-                            if(error) reject(error); 
+                            if (error) reject(error);
                             else if (json.status !== 0) {
-                                // This can happen if the correct agent is not running.
-                                reject('server did not give us the exp info.');
+                                reject("Server could not find that path");
                             }
                             else {
-                                console.log("got exp_info: ", json); 
+                                console.log("Got path: ", json.path);
                                 resolve(json);
                             }
                         }
                     );
                 }
-            ).then(
-                function(expinfo) {
-                    $(title_divid).html("Experiment: <b>" + expinfo.project + " / "
-                        + expinfo.experiment + "</b>"); 
-                }, 
+            );
+        
+            path_show_promise.then(
+                function(json) {
+                    var path_nodes = json["path"]
+                    var route_name = path_nodes[0] + "-" + path_nodes[path_nodes.length-1]
+                    for(var i = 0; i < path_nodes.length-1; i++) {
+                        var s = path_nodes[i]
+                        var t = path_nodes[i+1]
+                        var si = simulation.nodes().findIndex(function(n) { return n.name == s; });
+                        var ti = simulation.nodes().findIndex(function(n) { return n.name == t; });
+                        var name = s + "-" + t
+                        console.log('adding route path link', si, ti, name, route_name);
+                        links.push({source: si, target: ti, name: name,
+                            linknum: path_slot, route: route_name});
+                    }
+                    var src = path_nodes[0],
+                        dst = path_nodes[path_nodes.length-1];
+                    route_dropdown_menu.push({
+                        id: src + dst + path_slot,
+                        text: src + " --> " + dst,
+                        src: src, dst: dst, slot: path_slot,
+                        color: route_color(path_slot)
+                    });
+                    d3.select('#' + disp_route_button_id).classed("disabled", false); 
+                    d3.select(".choose-nodes-message").remove()
+                    choosing_path = false;
+                    path_slot = -1;
+                    update_topo();
+                },
                 function(message, error) {
-                    $(panel_title_id).html("Topology"); 
                     console.log(message, error);
                 }
             );
+        }
 
-            var load_topology_promise = new Promise(
-                function(resolve, reject) {
-                    d3.json(window.location.origin + "/api/topology/" + agent_name, 
-                        function(error, json) {
-                            if (error) reject(error);
-                            else if (json.status !== 0) reject("server did not give the topology");
-                            else resolve(json)
-                        }
-                    );
-                }
-            ); 
-                
-            load_topology_promise.then(function load_topology(json) {
-                // build the nodes and links teh way the graph widget wants them
-                for(var i = 0; i < json['nodes'].length; i++) {
-                    var n = json['nodes'][i];
-                    nodes.push({name: n, id: i});
-                }
-                for(var i = 0; i <  json['edges'].length; i++) {
-                    var s = json['edges'][i][0]
-                    var t = json['edges'][i][1]
-                    var si = json['nodes'].indexOf(s);
-                    var ti = json['nodes'].indexOf(t);
-                    var name = s + '-' + t
-                    console.log('adding link', s, t, name);
-                    links.push({source: si, target: ti, name: name, linknum: null});
-                }
+        function update_topo() {
+            console.log("updating topology");
 
-                update_topo();
-                d3.select('#' + disp_route_button_id).classed("disabled", false); 
-            });
+            // var link = link_selection.selectAll("path").data(links).enter()
+            var link = link_selection.selectAll("path").data(links)
+            var node = node_selection.selectAll(".node").data(nodes).enter().append("g").attr("class", "node")
 
-            function remove_all_paths() {
-                console.log("removing all paths");
-                for(var i=0; i<links.length; i++) {
-                    if (links[i].hasOwnProperty('route')) {
-                        console.log("removing link: ", links[i]);
-                        links.splice(i, 1);
-                        i--;   // we just removed an element.
-                    }
+            // update link attrs for existing links.
+            link.attrs(function(d) { return link_attrs(d); }); 
+
+            // enter (new links) - create link DOM.
+            link.enter().append("path")
+                .attr("class", "link")
+                .attr("fill", "none")
+                .attr("transform", newest_zoom);   // make sure to translate new links/paths.
+
+            node.append("circle")
+                .attr("r", "6")
+                .attr("fill", function(d) { return get_node_fill(d); })
+                .attr("stroke", function(d) { return get_node_stroke(d); })
+                .on("click", function(d) { click_node(d); })
+                .call(d3.drag()
+                        .on("start", dragstarted)
+                        .on("drag", dragged)
+                        .on("end", dragended))
+
+            node.append("text")
+                .attr("x", 12)
+                .attr("dy", ".35em")
+                .attr("font", "10px sans-serif")
+                .attr("pointer-events", "none")
+                .attr("fill", "black")
+                .text(function(d) { return d.name })
+
+            node.on("mouseover", function(d) { set_highlight(d); })
+                .on("mouseout", function(d) { exit_highlight(d); })
+
+            // remove links no longer in the DOM.
+            link.exit().remove(); 
+            node.exit().remove();
+
+            simulation.nodes(nodes);
+            simulation.force("link").links(links);
+            simulation.restart();
+
+            // "slot" is the unique ID for each menu entry as it maps to the index of the entry in the paths array.
+            var menu = route_dropdown_menu_selection
+                .selectAll("a")
+                .data(route_dropdown_menu, function(d) { return d.slot; })
+            // update existing menu entries with text/color. 
+            menu.selectAll("a")
+                .style("background-color", function(d) { return d.color; })
+                .text(function(d) { return d.text; })
+
+            // create and set new entries.
+            menu.enter()
+                .append("li")
+                    .append('a')
+                        .attr("href", "#")
+                        .attr("id", function(d) { return d.id; })
+                        .classed('dropdown-item', true)
+                        .style("background-color", function(d) { return d.color; })
+                        .text(function(d) { return d.text; })
+                        .on("click", handle_clear_route)
+
+            // remove missing entries.
+            menu.exit().remove()
+
+            // If there is only one menu entry (clear all), then disable the menu.
+            d3.select('#' + clear_route_button_id)
+                .classed("disabled", function() { return route_dropdown_menu.length == 1; })
+
+        };  // end of update_topo()
+
+        function get_node_stroke(d) {
+            return "blue";
+        }
+
+        function get_node_fill(d) {
+            if (d.hasOwnProperty("route_selected")) {
+                return route_color(d.route_selected); 
+            }
+            return "#8be47c";
+        }
+
+        function click_node(d) {
+            if (!choosing_path) {
+                return;
+            }
+            if (path_slot < 0) { // this is the first node clicked.
+                path_slot = selected_path_nodes.findIndex(function(x) { return x === undefined; });
+                if (path_slot >= 0) {
+                    selected_path_nodes[path_slot] = {src: d, dst: null};
+                } else {  // create a new slot. 
+                    selected_path_nodes.push({src: d, dst: null}); 
+                    path_slot = selected_path_nodes.length - 1;
                 }
-                for(var i=0; i<selected_path_nodes.length; i++) {
-                    delete selected_path_nodes[i];  // set slot to undefined.
-                }
-                route_dropdown_menu.splice(0, route_dropdown_menu.length);  // kill all menu items.
-                route_dropdown_menu.push(clear_all_routes_menu_entry);
-                update_topo();
+                d.route_selected = path_slot;
+                console.log("first path node: ", d.name); 
+                var message = d3.select(".choose-nodes-message")
+                                .text("Node " + d.name + " chosen. Choose node two."); 
+            } else {   // this is the second node chosen.
+                console.log("route dst: ", d.name);
+                selected_path_nodes[path_slot].dst = d;
+                show_path(path_slot); 
+                delete selected_path_nodes[path_slot].src.route_selected; // unselect the first node.
+                path_slot = -1; 
+            }
+        }
+
+        function set_highlight(d) {
+            svg.style("cursor", "pointer");
+        }
+
+        function exit_highlight(d) {
+            svg.style("cursor", "move");
+        }
+
+        function link_stroke(d) {
+
+        }
+
+        function link_attrs(d) {
+            var atts = {};
+            if (d.linknum === null) {
+                // Straight black slightly less opaque line.
+                atts["d"] = "M" + d.source.x + "," + d.source.y + "L" + d.target.x + "," + d.target.y;
+                atts["stroke"] = "black";
+                atts["stroke-opacity"] = 0.25;
+                atts["stroke-width"] = 1.0; 
+            } else {
+                var dx = d.target.x - d.source.x,
+                    dy = d.target.x - d.source.y,
+                    dr = Math.sqrt(((d.linknum+1) * dx * dx) + ((d.linknum+1) * dy * dy));
+
+                atts["d"] = "M" + d.source.x + "," + d.source.y + 
+                            "A" + dr + "," + dr + " 0 0,1 " + d.target.x + "," + d.target.y;
+
+
+                atts["stroke"] = route_color(d.linknum);
+                atts["stroke-opacity"] = 1.0;
+                atts["stroke-width"] = 1.5; 
+                atts["marker-end"] = "url(#end)";
             }
 
-            function handle_clear_route(d) {
-                console.log("removing path:" , d); 
-                if (d.id == "clear_all_routes") {
-                    remove_all_paths();
-                    return;
-                }
-                for(var i=0; i<links.length; i++) {
-                    if (links[i].hasOwnProperty('route') && links[i].route === d.src + "-" + d.dst) {
-                        console.log("removing link: ", links[i]);
-                        links.splice(i, 1);
-                        i--;   // we just removed an element.
-                    }
-                }
-                delete selected_path_nodes[d.slot];  // set slot to undefined. 
-                var i = route_dropdown_menu.findIndex(function(x) { return x.slot == d.slot; });
-                if (i != -1) { 
-                    route_dropdown_menu.splice(i, 1);   // remove it here, will remove it from the menu.
-                } else {
-                    console.log("unable to find in drop down menu: ", d); 
-                }
+            return atts
+        }
 
-                update_topo();
-            }
+        function ticked() {
+            var link = link_selection.selectAll("path");
+            var node = node_selection.selectAll(".node");
+            var circle = node.selectAll("circle");
 
-            function show_path(path_slot) {
-                var path_show_promise = new Promise(
-                    function(resolve, reject) {
-                        var url = window.location.origin + '/api/routing/path?';
-                        url += "src=" + selected_path_nodes[path_slot].src.name;
-                        url += "&dst=" + selected_path_nodes[path_slot].dst.name;
-                        d3.json(url, 
-                            function(error, json) {
-                                if (error) reject(error);
-                                else if (json.status !== 0) {
-                                    reject("Server could not find that path");
-                                }
-                                else {
-                                    console.log("Got path: ", json.path);
-                                    resolve(json);
-                                }
-                            }
-                        );
-                    }
-                );
-            
-                path_show_promise.then(
-                    function(json) {
-                        var path_nodes = json["path"]
-                        var route_name = path_nodes[0] + "-" + path_nodes[path_nodes.length-1]
-                        for(var i = 0; i < path_nodes.length-1; i++) {
-                            var s = path_nodes[i]
-                            var t = path_nodes[i+1]
-                            var si = simulation.nodes().findIndex(function(n) { return n.name == s; });
-                            var ti = simulation.nodes().findIndex(function(n) { return n.name == t; });
-                            var name = s + "-" + t
-                            console.log('adding route path link', si, ti, name, route_name);
-                            links.push({source: si, target: ti, name: name,
-                                linknum: path_slot, route: route_name});
-                        }
-                        var src = path_nodes[0],
-                            dst = path_nodes[path_nodes.length-1];
-                        route_dropdown_menu.push({
-                            id: src + dst + path_slot,
-                            text: src + " --> " + dst,
-                            src: src, dst: dst, slot: path_slot,
-                            color: route_color(path_slot)
-                        });
-                        d3.select('#' + disp_route_button_id).classed("disabled", false); 
-                        d3.select(".choose-nodes-message").remove()
-                        choosing_path = false;
-                        path_slot = -1;
-                        update_topo();
-                    },
-                    function(message, error) {
-                        console.log(message, error);
-                    }
-                );
-            }
+            link.attrs(function(d) { return link_attrs(d); }); 
 
-            function update_topo() {
-                console.log("updating topology");
+            // node.attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; })
+            node.selectAll("circle").attr("cx", function(d) { return d.x; })
+            node.selectAll("circle").attr("cy", function(d) { return d.y; })
+            node.selectAll("text").attr("x", function(d) { return d.x + 8; })
+            node.selectAll("text").attr("y", function(d) { return d.y; })
 
-                // var link = link_selection.selectAll("path").data(links).enter()
-                var link = link_selection.selectAll("path").data(links)
-                var node = node_selection.selectAll(".node").data(nodes).enter().append("g").attr("class", "node")
+            circle.attr("fill", function(d) { return get_node_fill(d); })
+                  .attr("stroke", function(d) { return get_node_stroke(d); })
+        }
 
-                // update link attrs for existing links.
-                link.attrs(function(d) { return link_attrs(d); }); 
-
-                // enter (new links) - create link DOM.
-                link.enter().append("path")
-                    .attr("class", "link")
-                    .attr("fill", "none")
-                    .attr("transform", newest_zoom);   // make sure to translate new links/paths.
-
-                node.append("circle")
-                    .attr("r", "6")
-                    .attr("fill", function(d) { return get_node_fill(d); })
-                    .attr("stroke", function(d) { return get_node_stroke(d); })
-                    .on("click", function(d) { click_node(d); })
-                    .call(d3.drag()
-                            .on("start", dragstarted)
-                            .on("drag", dragged)
-                            .on("end", dragended))
-
-                node.append("text")
-                    .attr("x", 12)
-                    .attr("dy", ".35em")
-                    .attr("font", "10px sans-serif")
-                    .attr("pointer-events", "none")
-                    .attr("fill", "black")
-                    .text(function(d) { return d.name })
-
-                node.on("mouseover", function(d) { set_highlight(d); })
-                    .on("mouseout", function(d) { exit_highlight(d); })
-
-                // remove links no longer in the DOM.
-                link.exit().remove(); 
-                node.exit().remove();
-
-                simulation.nodes(nodes);
-                simulation.force("link").links(links);
-                simulation.restart();
-
-                // "slot" is the unique ID for each menu entry as it maps to the index of the entry in the paths array.
-                var menu = route_dropdown_menu_selection
-                    .selectAll("a")
-                    .data(route_dropdown_menu, function(d) { return d.slot; })
-                // update existing menu entries with text/color. 
-                menu.selectAll("a")
-                    .style("background-color", function(d) { return d.color; })
-                    .text(function(d) { return d.text; })
-
-                // create and set new entries.
-                menu.enter()
-                    .append("li")
-                        .append('a')
-                            .attr("href", "#")
-                            .attr("id", function(d) { return d.id; })
-                            .classed('dropdown-item', true)
-                            .style("background-color", function(d) { return d.color; })
-                            .text(function(d) { return d.text; })
-                            .on("click", handle_clear_route)
-
-                // remove missing entries.
-                menu.exit().remove()
-
-                // If there is only one menu entry (clear all), then disable the menu.
-                d3.select('#' + clear_route_button_id)
-                    .classed("disabled", function() { return route_dropdown_menu.length == 1; })
-
-            };  // end of update_topo()
-
-            function get_node_stroke(d) {
-                return "blue";
-            }
-
-            function get_node_fill(d) {
-                if (d.hasOwnProperty("route_selected")) {
-                    return route_color(d.route_selected); 
-                }
-                return "#8be47c";
-            }
-
-            function click_node(d) {
-                if (!choosing_path) {
-                    return;
-                }
-                if (path_slot < 0) { // this is the first node clicked.
-                    path_slot = selected_path_nodes.findIndex(function(x) { return x === undefined; });
-                    if (path_slot >= 0) {
-                        selected_path_nodes[path_slot] = {src: d, dst: null};
-                    } else {  // create a new slot. 
-                        selected_path_nodes.push({src: d, dst: null}); 
-                        path_slot = selected_path_nodes.length - 1;
-                    }
-                    d.route_selected = path_slot;
-                    console.log("first path node: ", d.name); 
-                    var message = d3.select(".choose-nodes-message")
-                                    .text("Node " + d.name + " chosen. Choose node two."); 
-                } else {   // this is the second node chosen.
-                    console.log("route dst: ", d.name);
-                    selected_path_nodes[path_slot].dst = d;
-                    show_path(path_slot); 
-                    delete selected_path_nodes[path_slot].src.route_selected; // unselect the first node.
-                    path_slot = -1; 
-                }
-            }
-
-            function set_highlight(d) {
-                svg.style("cursor", "pointer");
-            }
-
-            function exit_highlight(d) {
-                svg.style("cursor", "move");
-            }
-
-            function link_stroke(d) {
-
-            }
-
-            function link_attrs(d) {
-                var atts = {};
-                if (d.linknum === null) {
-                    // Straight black slightly less opaque line.
-                    atts["d"] = "M" + d.source.x + "," + d.source.y + "L" + d.target.x + "," + d.target.y;
-                    atts["stroke"] = "black";
-                    atts["stroke-opacity"] = 0.25;
-                    atts["stroke-width"] = 1.0; 
-                } else {
-                    var dx = d.target.x - d.source.x,
-                        dy = d.target.x - d.source.y,
-                        dr = Math.sqrt(((d.linknum+1) * dx * dx) + ((d.linknum+1) * dy * dy));
-
-                    atts["d"] = "M" + d.source.x + "," + d.source.y + 
-                                "A" + dr + "," + dr + " 0 0,1 " + d.target.x + "," + d.target.y;
-
-
-                    atts["stroke"] = route_color(d.linknum);
-                    atts["stroke-opacity"] = 1.0;
-                    atts["stroke-width"] = 1.5; 
-                    atts["marker-end"] = "url(#end)";
-                }
-
-                return atts
-            }
-
-            function ticked() {
-                var link = link_selection.selectAll("path");
-                var node = node_selection.selectAll(".node");
-                var circle = node.selectAll("circle");
-
-                link.attrs(function(d) { return link_attrs(d); }); 
-
-                // node.attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; })
-                node.selectAll("circle").attr("cx", function(d) { return d.x; })
-                node.selectAll("circle").attr("cy", function(d) { return d.y; })
-                node.selectAll("text").attr("x", function(d) { return d.x + 8; })
-                node.selectAll("text").attr("y", function(d) { return d.y; })
-
-                circle.attr("fill", function(d) { return get_node_fill(d); })
-                      .attr("stroke", function(d) { return get_node_stroke(d); })
-            }
-
-            d3.select('#' + disp_route_button_id).on("click", function() {
-                d3.select(this).classed("disabled", true);
-                choosing_path = true;   // we are now choosing a path.
-                message_area.append("div")
-                            .attr("class", "alert alert-success choose-nodes-message")
-                            .append("text").text("Choose first node")
-            });
+        d3.select('#' + disp_route_button_id).on("click", function() {
+            d3.select(this).classed("disabled", true);
+            choosing_path = true;   // we are now choosing a path.
+            message_area.append("div")
+                        .attr("class", "alert alert-success choose-nodes-message")
+                        .append("text").text("Choose first node")
+        });
     } // end route_topology
 
     // Lot of duplicate topology code here. It'll have to be refactored and combined with the otehr 
@@ -1884,18 +1908,38 @@ console.log('deterdash loaded.');
     } // end of generate_topology()
 
     // Build the units dropdown menu and update the panel title. 
-    var build_units_drop_down = function(divid, title_id, units, on_click_callback) {
-        set_chart_title(data_units[0], title_id);
-        var dropdown = d3.select(divid)
+    var build_units_drop_down = function(divid, menu_title, units, on_click_callback) {
+        // dropdown menu is a button group.
+        var dropdown = d3.select(divid).append("div").classed("btn-group", true).attr('role', 'menu')
+        // first button is teh "label" with caret.
+        dropdown.append('button')
+            .attr('type', 'button')
+            .classed('btn btn-xs btn-default dropdown-toggle', true)
+            .attr('data-toggle', 'dropdown')
+            .attr('aria-haspopup', 'true')
+            .attr('aria-expanded', 'false')
+            .attr('id', 'dropid_' + menu_title)
+            .text(menu_title)
+            .append('span').classed('caret', true)
+
+        // now each entry is an li in an ul
+        var dropdown_menu = dropdown.append('ul')
+            .classed('dropdown-menu', true)
+            .attr('aria-labelledby', 'dropid_' + menu_title)
+
+        // use d3 to generate the entries.
+        var entries = dropdown_menu
             .selectAll("li")
-            .data(data_units)
+            .data(units)
                 .enter()
                 .append("li")
                 .append("a")
                     .attr("href", "#")
-                    .text(function(d) { return d.display; })
+                    .text(function(d) {
+                        if (d.unit) { return d.display + ' (' + d.unit + ') '; }
+                        else  { return d.display; }
+                    })
                     .on("click", function(d) {
-                        set_chart_title(d, title_id)
                         on_click_callback(d);
                     });
     }

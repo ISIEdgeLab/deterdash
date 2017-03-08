@@ -8,27 +8,16 @@
 <div class="col-lg-12">
     <div class="panel panel-default">
         <div class="panel-heading">
-            <span id="chart_title"></span>
+            <span id="chart_title"> <b> {{ agent.display }} </b> </span>
             <div class="pull-right">
                 <span>
-                    <div class="btn-group control-button-grp">
-                        <button type="button" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown">
-                            Plot Units
-                            <span class="caret"></span>
-                        </button>
-                        <ul id="chart_units_dropdown" class="dropdown-menu pull-right" role="menu">
-                        </ul>
-                    </div>
+                    <div class="btn-group" id="panel_btn_grp"></div>
                 </span>
             </div>
         </div>
-        <!-- /.panel-heading -->
-        <!-- /.panel-body -->
         <div class="panel-body">
             <div class="panel-body" id="time_plots_id"></div> 
-            </div> <!-- /#time_plots_id -->
         </div>
-        <!-- /.panel-body -->
     </div>
 </div>
 <script type="text/javascript">
@@ -38,8 +27,7 @@
             {{ agent|tojson }},         // using jinja2 tojson filter to convert to json.
             "#time_plots_id",
             "#chart_title",
-            "#chart_units_dropdown",
-            ".control-button-grp"); 
+            "#panel_btn_grp"); 
 </script>
 {% endblock %}
 
