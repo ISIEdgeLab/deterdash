@@ -61,11 +61,10 @@ class DeterDashboard(object):
 
         return True
 
-    def add_topology(self, display, table, node_key, edges_key, template=None, extra_keys=None):
+    def add_topology(self, display, table, node_key, edges_key, extra_keys=None):
         '''Add a topology to the GUI. table_keys is a list of keys which identify the table.
         node_key and edges_key identify the nodes and edges data.'''
         log.info('Adding topology {}'.format(display))
-        template = 'force_graph.html' if not template else template
         viz_collection = database.getCollection(DeterDashboard.viz_data_table)
         viz_collection.insert({
             'datatype': DeterDashboard.force_directed_graph_type,
@@ -73,8 +72,7 @@ class DeterDashboard(object):
             'table': table,
             'node_key': node_key,
             'edges_key': edges_key,
-            'extra_keys': extra_keys,
-            'template': template
+            'extra_keys': extra_keys
         })
 
     def add_link_annotation(self, display, table, edge_key, units):
