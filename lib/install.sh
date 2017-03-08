@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-STAGINGDIR=/proj/edgect/magi/current/source
+STAGINGDIR=/share/deterdash/packages
 
 if [[ $(hostname -s) == users ]]; then
     echo Staging tar file on users.

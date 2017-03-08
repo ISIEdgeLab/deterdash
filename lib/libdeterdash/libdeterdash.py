@@ -25,8 +25,7 @@ class DeterDashboard(object):
     # The supported datatypes
     time_plot_type = 'time_plot'
     force_directed_graph_type = 'force_directed_graph'
-    link_annotation_type = 'link_annotation'
-    node_annotation_type = 'nodw_annotation'
+    topology_annotation_type = 'topology_annotation'
 
     # Where we keep IDLs
     viz_idl_table = 'viz_data_idl'
@@ -78,30 +77,30 @@ class DeterDashboard(object):
             'template': template
         })
 
-    def add_link_annotation(self, display, table, edge_key, data_key):
+    def add_link_annotation(self, display, table, edge_key, units):
         '''Given the table and keys, annotate the given link with the given data. The edge_key 
         must point to a table entry that is a tuple of (node A name, node B name). Links are 
         asymetric (the toplogy is a directed graph).''' 
         log.info('Adding link annotation {}'.format(display))
         c = database.getCollection(DeterDashboard.viz_data_table)
         c.insert({
-            'datatype': DeterDashboard.link_annotation_type,
+            'datatype': DeterDashboard.topology_annotation_type,
             'display': display,
             'table': table,
-            'edge_key': edge_key,
-            'data_key': data_key
+            'key': edge_key,
+            'units': units
         })
 
-    def add_node_annotation(self, display, table, node_key, data_key):
+    def add_node_annotation(self, display, table, node_key, units):
         '''Given the table and keys, annotate the given node with the given data.'''
         log.info('Adding node annotation {}'.format(display))
         c = database.getCollection(DeterDashboard.viz_data_table)
         c.insert({
-            'datatype': DeterDashboard.node_annotation_type,
+            'datatype': DeterDashboard.topology_annotation_type,
             'display': display,
             'table': table,
-            'edge_key': edge_key,
-            'data_key': data_key
+            'key': edge_key,
+            'units': units
         })
 
     def get_topology_keys(self, agent):

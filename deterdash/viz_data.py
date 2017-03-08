@@ -33,6 +33,13 @@ def load_default_viz_ui_types():
             'icon': 'fa-sitemap',
             'endpoint': 'graphs',
             'implementation': 'force_graph.html'
+        },
+        {
+            'datatype': DeterDashboard.topology_annotation_type,
+            'display': 'Topology Annotations',
+            'icon': 'fa-sitemap',
+            'endpoint': 'topo_anno',
+            'implementation': 'topo_annotation.html'
         }
     ]
 

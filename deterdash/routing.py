@@ -18,7 +18,7 @@ def get_route_tables(node, table_type):
         {
             'routes': True
         }
-    ).sort('created', pymongo.DESCENDING).limit(1)
+    ).sort('created', pymongo.ASCENDING).limit(1)
 
     if cursor.alive and cursor.count():
         if 'routes' in cursor[0]:

@@ -4,6 +4,7 @@ from flask import render_template, jsonify, request
 
 from . import app
 from .topology import get_topology
+from .annotations import get_topology_annotations
 from .routing import get_route_tables, get_route_path
 from .viz_data import get_viz_ui_types, get_viz_agents, get_viz_agent, get_node_viztypes
 from .viz_data import get_node_agents
@@ -62,7 +63,7 @@ def show_routes(agent):
     if not agent:
         return render_template("error.html", error='Unable to that agent associated with any graph.')
 
-    return render_template(agent['template'], agent=agent)
+    return render_template('force_graph.html', agent=agent)
 
 #
 # display an executable agent.
@@ -118,6 +119,14 @@ def topology(agentname):
         return jsonify(status=1, error='topology not found for agent {}'.format(agentname))
 
     return jsonify(status=0, nodes=nodes, edges=edges)
+
+@app.route('/api/topo_anno/<agent>/<key>')
+def api_topology_annotation(agent, key):
+    annos = get_topology_annotations(agent, key)
+    if not annos:
+        return jsonify(status=1, error='Error reading topology annotations for {}/{}'.format(agent, key))
+
+    return jsonify(status=0, key=key, agent=agent, data=annos)
 
 @app.route('/api/exp_nodes')
 def exp_nodes():

@@ -885,6 +885,14 @@ console.log('deterdash loaded.');
         );
     }
 
+    function set_chart_title(unit, id) { 
+        var chart_title = unit.display;
+        if (unit.unit) {
+            chart_title += " (" + unit.unit + ")";
+        }
+        d3.select(id).text(chart_title);
+    }
+
     deterdash.spawn_time_plot = function(agent_json, plot_divid, chart_title_id, 
                 chart_units_dropdown_id, control_btn_group_id) {
         console.log('agent_json', agent_json); 
@@ -968,32 +976,11 @@ console.log('deterdash loaded.');
         });
 
         // Build the units dropdown menu and update the panel title. 
-        var build_units_drop_down = function() {
-            // GTL for testing - add random data to plot (server side)
-            // data_units.push({display: "random", data_key: "random"})
-            set_chart_title(data_units[0]);
-            var dropdown = d3.select(chart_units_dropdown_id)
-                .selectAll("li")
-                .data(data_units)
-                    .enter()
-                    .append("li")
-                    .append("a")
-                        .attr("href", "#")
-                        .text(function(d) { return d.display; })
-                        .on("click", function(d) {
-                            set_chart_title(d)
-                            data_key = d.data_key;
-                            nodes.forEach(function(n) { n.data.splice(0, n.data.length); });
-                        });
-        }(); 
-
-        function set_chart_title(unit) { 
-            var chart_title = unit.display;
-            if (unit.unit) {
-                chart_title += " (" + unit.unit + ")";
-            }
-            d3.select(chart_title_id).text(chart_title);
-        }
+        deterdash.build_units_drop_down(chart_units_dropdown_id, chart_title_id, data_units,
+                            function(u) {
+                                data_key = u.data_key;
+                                nodes.forEach(function(n) { n.data.splice(0, n.data.length); });
+                            });
 
         var build_pause_button = function() { 
             console.log("building pause button")
@@ -1206,11 +1193,9 @@ console.log('deterdash loaded.');
         } // end of read_data
     } // end of spawn_time_plot
     
-    deterdash.route_topology = function(agent_name, route_divid, node_panels_id, clear_routes_menu_id, 
-                                         clear_route_button_id, display_route_button_id, title_divid,
-                                         choose_nodes_divid) {
-            var win_w = $(route_divid).width(),
-                win_h = $(route_divid).height();
+    deterdash.route_topology = function(agent_name, panel_id, panel_title_id, panel_btn_grp_id) {
+            var win_w = $(panel_id).width(),
+                win_h = $(panel_id).height();
             var margin = {top: 5, right: 5, bottom: 5, left: 5};
 
             var node_rad = 10,
@@ -1247,8 +1232,11 @@ console.log('deterdash loaded.');
                 .force("center", d3.forceCenter(win_w/2, win_h/2))
                 .on("tick", ticked)
 
+            // a place to write messages to the user.
+            var message_area = d3.select(panel_id).append("div").attr('id', "message_area")
+
             var svg = d3
-                .select(route_divid)
+                .select(panel_id)
                 .append("svg")
                 .attr("cursor", "move")
                 .call(d3.zoom().scaleExtent([0.5, 10]).on("zoom", zoomed));
@@ -1267,17 +1255,36 @@ console.log('deterdash loaded.');
                 .append("path")
                     .attr("d", "M0,-5L10,0L0,5");
 
+            // add our stuff to the panel header.
+            var disp_route_button_id = 'disp_route_button',
+                clear_route_button_id = 'clear_route_button'
+
+            var panel_buttons = d3.select(panel_btn_grp_id)
+            panel_buttons.append('button').attr('type', 'button').attr('id', disp_route_button_id)
+                .classed('btn btn-default btn-xs disabled', true).text("Display Route")
+
+            var clear_dropdown = panel_buttons.append("div").classed("btn-group", true).attr('role', 'menu')
+            clear_dropdown.append('button').attr('type', 'button').attr('id', clear_route_button_id)
+                .classed('btn btn-xs btn-default dropdown-toggle disabled', true)
+                .attr('data-toggle', 'dropdown').attr('aria-haspopup', 'true').attr('aria-expanded', 'false')
+                .text("Clear Routes")
+                .append('span').classed('caret', true)
+
+            var route_dropdown_menu_selection = clear_dropdown.append('ul')
+                .classed('dropdown-menu', true)
+                .attr('aria-labelledby', clear_route_button_id)
+            
+            // resize 
             d3.select(window).on("resize", resize);
 
             var link_selection = svg.append("g").attr("class", "links");
             var node_selection = svg.append("g").attr("class", "nodes");
-            var route_dropdown_menu_selection = d3.select(".clear_routes_dropdown");
 
             resize();   // set initial size.
 
             function resize() {
-                var win_w = $(route_divid).width(),
-                    win_h = $(route_divid).height();
+                var win_w = $(panel_id).width(),
+                    win_h = $(panel_id).height();
 
                 svg.attr("width", win_w - margin.left - margin.right)
                    .attr("height", win_h - margin.top - margin.bottom);
@@ -1328,7 +1335,7 @@ console.log('deterdash loaded.');
                         + expinfo.experiment + "</b>"); 
                 }, 
                 function(message, error) {
-                    $(title_divid).html("Topology"); 
+                    $(panel_title_id).html("Topology"); 
                     console.log(message, error);
                 }
             );
@@ -1362,7 +1369,7 @@ console.log('deterdash loaded.');
                 }
 
                 update_topo();
-                d3.select(display_route_button_id).classed("disabled", false); 
+                d3.select('#' + disp_route_button_id).classed("disabled", false); 
             });
 
             function remove_all_paths() {
@@ -1449,7 +1456,7 @@ console.log('deterdash loaded.');
                             src: src, dst: dst, slot: path_slot,
                             color: route_color(path_slot)
                         });
-                        d3.select(display_route_button_id).classed("disabled", false); 
+                        d3.select('#' + disp_route_button_id).classed("disabled", false); 
                         d3.select(".choose-nodes-message").remove()
                         choosing_path = false;
                         path_slot = -1;
@@ -1508,7 +1515,7 @@ console.log('deterdash loaded.');
 
                 // "slot" is the unique ID for each menu entry as it maps to the index of the entry in the paths array.
                 var menu = route_dropdown_menu_selection
-                    .selectAll("li")
+                    .selectAll("a")
                     .data(route_dropdown_menu, function(d) { return d.slot; })
                 // update existing menu entries with text/color. 
                 menu.selectAll("a")
@@ -1518,18 +1525,19 @@ console.log('deterdash loaded.');
                 // create and set new entries.
                 menu.enter()
                     .append("li")
-                    .append("a")
-                        .attr("href", "#")
-                        .attr("id", function(d) { return d.id; })
-                        .style("background-color", function(d) { return d.color; })
-                        .text(function(d) { return d.text; })
-                        .on("click", handle_clear_route)
+                        .append('a')
+                            .attr("href", "#")
+                            .attr("id", function(d) { return d.id; })
+                            .classed('dropdown-item', true)
+                            .style("background-color", function(d) { return d.color; })
+                            .text(function(d) { return d.text; })
+                            .on("click", handle_clear_route)
 
                 // remove missing entries.
                 menu.exit().remove()
 
                 // If there is only one menu entry (clear all), then disable the menu.
-                d3.select(clear_route_button_id)
+                d3.select('#' + clear_route_button_id)
                     .classed("disabled", function() { return route_dropdown_menu.length == 1; })
 
             };  // end of update_topo()
@@ -1625,20 +1633,18 @@ console.log('deterdash loaded.');
                       .attr("stroke", function(d) { return get_node_stroke(d); })
             }
 
-            d3.select(display_route_button_id).on("click", function() {
+            d3.select('#' + disp_route_button_id).on("click", function() {
                 d3.select(this).classed("disabled", true);
                 choosing_path = true;   // we are now choosing a path.
-                var mess_area = d3.select("#message_area")
-                    .append("div")
-                    .attr("class", "alert alert-success choose-nodes-message")
-
-                mess_area.append("text").text("Choose first node")
+                message_area.append("div")
+                            .attr("class", "alert alert-success choose-nodes-message")
+                            .append("text").text("Choose first node")
             });
     } // end route_topology
 
     // Lot of duplicate topology code here. It'll have to be refactored and combined with the otehr 
     // topolgy code at some point. 
-    deterdash.generate_topology = function(agent_name, topo_divid, chart_title_divid) {
+    deterdash.generate_topology = function(agent_name, topo_divid, chart_title_divid, panel_btn_grp) {
         var win_w = $(topo_divid).width(),
             win_h = $(topo_divid).height();
         var margin = {top: 5, right: 5, bottom: 5, left: 5};
@@ -1877,6 +1883,23 @@ console.log('deterdash loaded.');
         }
     } // end of generate_topology()
 
-    // And now finally return the bigly deterdash instance.
+    // Build the units dropdown menu and update the panel title. 
+    var build_units_drop_down = function(divid, title_id, units, on_click_callback) {
+        set_chart_title(data_units[0], title_id);
+        var dropdown = d3.select(divid)
+            .selectAll("li")
+            .data(data_units)
+                .enter()
+                .append("li")
+                .append("a")
+                    .attr("href", "#")
+                    .text(function(d) { return d.display; })
+                    .on("click", function(d) {
+                        set_chart_title(d, title_id)
+                        on_click_callback(d);
+                    });
+    }
+
+    // And now finally return the deterdash instance.
     return deterdash;
 })(window);
