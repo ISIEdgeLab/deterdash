@@ -66,7 +66,9 @@ def load_default_viz_ui_types():
 def get_viz_ui_types():
     db = magi_db()
     cursor = db.experiment_data.find({'agent': 'viz_ui'}, {'_id': False})
-    return list(cursor)
+    # The topo anno tpe should not be displayed in the GUI as a selectable type.
+    retval = [d for d in list(cursor) if d['datatype'] != DeterDashboard.topology_annotation_type]
+    return retval
 
 
 def get_viz_agent_nodes(datatype, agentname):

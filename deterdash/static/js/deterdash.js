@@ -1295,7 +1295,7 @@ console.log('deterdash loaded.');
         function zoomed() {
             newest_zoom = d3.event.transform;
             node_selection.selectAll(".node").attr("transform", newest_zoom); 
-            link_selection.selectAll("path").attr("transform", newest_zoom);
+            link_selection.selectAll(".link").attr("transform", newest_zoom);
         }
 
         function dragstarted(d) {
@@ -1367,7 +1367,7 @@ console.log('deterdash loaded.');
                 var ti = json['nodes'].indexOf(t);
                 var name = s + '-' + t
                 console.log('adding link', s, t, name);
-                links.push({source: si, target: ti, name: name, linknum: null});
+                links.push({source: si, target: ti, name: name, linknum: null, label: null});
             }
 
             update_topo();
@@ -1389,12 +1389,48 @@ console.log('deterdash loaded.');
         topo_annotation_units_promise.then(function(json) {
             console.log('got topo anno units ', json)
             // json == display: "title", units: list of unit structs.
+            // add a "clear units" entry just for the GUI.
+            json.units.push({display: 'Clear Annotations', data_key: null})
             build_units_drop_down(panel_btn_grp_id, json.display, json.units, 
                 function(u) { 
                     console.log('Annotation chosen: ', u)
+                    // GTL need to set the units chosen somewhere in the GUI here or in load_annotation()
+                    if (u.data_key) { 
+                        load_annotation(u) }
+                    else {
+                        for(var i=0; i<links.length; i++) {
+                            links[i].label = null;
+                        }
+                        update_topo()
+                    }
                 })
             }
         );
+
+        function load_annotation(unit) { 
+            var la_promise = new Promise(
+                function(resolve, reject) { 
+                    d3.json(window.location.origin + '/api/topo_anno/' + agent_name + '/' + unit.data_key,
+                        function(error, json) { 
+                            if(error) reject(error)
+                            else if (json.status !== 0) reject("no topology annotions")
+                            else resolve(json)
+                        }
+                    );
+                }
+            ); 
+
+            la_promise.then(function(json) {
+                console.log('got annotation data: ' + json)
+                // relavent json bits: data: list of 'edge', 'value' edge is [nodeA, nodeB] json encoded!
+                json.data.forEach(function(anno) { 
+                    var edge = JSON.parse(anno.edge)
+                    var l = links.find(function(d) { return d.name === edge[0] + '-' + edge[1]; })
+                    if (l) { l.label = anno.value }
+                    update_topo();
+                })
+            }); 
+        } // end load_annotation
 
         function remove_all_paths() {
             console.log("removing all paths");
@@ -1470,7 +1506,7 @@ console.log('deterdash loaded.');
                         var name = s + "-" + t
                         console.log('adding route path link', si, ti, name, route_name);
                         links.push({source: si, target: ti, name: name,
-                            linknum: path_slot, route: route_name});
+                            linknum: path_slot, route: route_name, label: null});
                     }
                     var src = path_nodes[0],
                         dst = path_nodes[path_nodes.length-1];
@@ -1495,18 +1531,20 @@ console.log('deterdash loaded.');
         function update_topo() {
             console.log("updating topology");
 
-            // var link = link_selection.selectAll("path").data(links).enter()
-            var link = link_selection.selectAll("path").data(links)
+            // var link = link_selection.selectAll("path").data(links)
+            var link = link_selection.selectAll(".link").data(links).enter().append('g').attr('class', 'link')
             var node = node_selection.selectAll(".node").data(nodes).enter().append("g").attr("class", "node")
 
             // update link attrs for existing links.
-            link.attrs(function(d) { return link_attrs(d); }); 
+            // link.attrs(function(d) { return link_attrs(d); }); 
+
+            link.attr("transform", newest_zoom)
 
             // enter (new links) - create link DOM.
-            link.enter().append("path")
-                .attr("class", "link")
+            link.append("path")
                 .attr("fill", "none")
-                .attr("transform", newest_zoom);   // make sure to translate new links/paths.
+
+            link.append("text").text(function(d) { return d.label; })
 
             node.append("circle")
                 .attr("r", "6")
@@ -1614,7 +1652,7 @@ console.log('deterdash loaded.');
 
         }
 
-        function link_attrs(d) {
+        function path_attrs(d) {
             var atts = {};
             if (d.linknum === null) {
                 // Straight black slightly less opaque line.
@@ -1641,13 +1679,25 @@ console.log('deterdash loaded.');
         }
 
         function ticked() {
-            var link = link_selection.selectAll("path");
+            var link = link_selection.selectAll(".link");
             var node = node_selection.selectAll(".node");
             var circle = node.selectAll("circle");
 
-            link.attrs(function(d) { return link_attrs(d); }); 
+            link.selectAll('path').attrs(function(d) { return path_attrs(d); }); 
+            link.selectAll('text')
+                .attr("x", function(d) {
+                    if (d.target.x > d.source.x) { return (d.source.x + (d.target.x - d.source.x)/2); }
+                    else { return (d.target.x + (d.source.x - d.target.x)/2); }
+                })
+                .attr("y", function(d) {
+                    if (d.target.y > d.source.y) { return (d.source.y + (d.target.y - d.source.y)/2); }
+                    else { return (d.target.y + (d.source.y - d.target.y)/2); }
+                })
+                .attr("fill", "Blue")
+                .style("font", "normal 12px Arial")
+                .attr("dy", ".35em")
+                .text(function(d) { return d.label; })
 
-            // node.attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; })
             node.selectAll("circle").attr("cx", function(d) { return d.x; })
             node.selectAll("circle").attr("cy", function(d) { return d.y; })
             node.selectAll("text").attr("x", function(d) { return d.x + 8; })
