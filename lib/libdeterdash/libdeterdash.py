@@ -30,8 +30,20 @@ class DeterDashboard(object):
     # Where we keep IDLs
     viz_idl_table = 'viz_data_idl'
 
+    # Where we keep alerts.
+    viz_alerts_table = 'viz_alerts'
+
     def __init__(self):
         pass
+
+    def send_alert(self, frm, text):
+        # We just write the text to teh DB, The server picks it up and sends it out.
+        # The client keeps track of alerts it's seen.
+        table = database.getCollection(DeterDashboard.viz_alerts_table)
+        table.insert({
+            'alerter': frm,
+            'text': text
+        })
 
     def add_time_plot(self, display, table, node_key, units):
         log.info('Adding time plot {}'.format(display))

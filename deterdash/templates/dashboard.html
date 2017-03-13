@@ -167,7 +167,7 @@
                     <!-- sidebar menu: : style can be found in sidebar.less -->
                     <ul class="sidebar-menu">
                         <li>
-                            <a href="{{ url_for('static', filename='../../viz/exp_status') }}">
+                            <a id="exp_stat_page" href="#">
                                 <i class="fa fa-dashboard fa-fw"></i> Experiment Status </a>
                         </li>
                         <li class="treeview">
@@ -186,11 +186,11 @@
                                     </a>
                                     <ul class="treeview-menu">
                                         {% for agent in graphable.agents %}
-                                            <li>
-                                                <a href="../../viz/{{ graphable.endpoint }}/{{ agent.table }}">
-                                                    {{ agent.display }} ({{ agent.table }})
-                                                </a>
-                                            </li>
+                                        <li>
+                                            <a id="{{graphable.endpoint}}_{{agent.table}}" href="#">
+                                                {{agent.display}} ({{agent.table}})
+                                            </a>
+                                        </li>
                                         {% endfor %}
                                     </ul>
                                 </li>
@@ -205,9 +205,7 @@
                                     <ul class="treeview-menu">
                                         {% for node in nodes|sort %}
                                         <li>
-                                            <a href="../../viz/node_info/{{ node }}">
-                                                {{ node }}
-                                            </a>
+                                            <a id="node_info_{{ node }}" href="#">{{node}}</a>
                                         </li>
                                         {% endfor %}
                                     </ul>
@@ -261,9 +259,12 @@
                     </ol>
                     --->
                 </section>
+                <!-- 
                 <section class="content">
                     {% block content %}{% endblock %}
-                </section>
+               </section>
+               -->
+               <section id="content_id"></section>
             </aside> <!-- ./right-side -->
         </div> <!-- ./wrapper -->
 
@@ -286,8 +287,39 @@
         <script src="{{ url_for('static', filename='AdminLTE/js/AdminLTE/app.js') }}" type="text/javascript"></script>
 
         <script>
+            // Initialize teh select2 box library.
             $('.select').select2();
             $('.select2').select2();
+
+            // Load the central page on click.
+            jQuery(window).load(function() {
+                // hardcoded clicks.
+                jQuery("#exp_stat_page").on('click', function() {
+                    jQuery.get("{{ url_for('static', filename='../../viz/exp_status') }}", function(d) {
+                        jQuery("#content_id").html(d);
+                    })
+                });
+                // dynamic clicks.
+                {% for graphable in graphables %}
+                    {% for agent in graphable.agents %}
+                        jQuery("#{{graphable.endpoint}}_{{agent.table}}").on('click', function() {
+                            jQuery.get("../../viz/{{ graphable.endpoint }}/{{ agent.table }}", function(d) {
+                                jQuery("#content_id").html(d);
+                            })
+                        });
+                    {% endfor %}
+                {% endfor %}
+                {% if nodes|length > 0 %}
+                    {% for node in nodes|sort %}
+                        jQuery("#node_info_{{node}}").on('click', function() {
+                            jQuery.get("../../viz/node_info/{{ node }}", function(d) {
+                                jQuery("#content_id").html(d);
+                            })
+                        });
+                    {% endfor %}
+                {% endif %}
+            });
+            
         </script>
     </body>
 </html>
