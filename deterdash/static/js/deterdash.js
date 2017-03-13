@@ -72,6 +72,7 @@ console.log('deterdash loaded.');
 
             exp_info_promise.then(
                 function(exp_info_json) {
+                    console.log('Got experiment info. Populating page bits...')
                     var exp_name = exp_info_json['project'] + "/" + exp_info_json['experiment']
                     var exp_url = "http://www.isi.deterlab.net/showexp.php?pid=" + exp_info_json['project'] +
                                   "&eid=" + exp_info_json['experiment']
@@ -103,7 +104,9 @@ console.log('deterdash loaded.');
                 function(error) {
                     console.log(error)
                     console.log("retryingin 5 seconds...")
-                    setTimeout(load_experiment_info(title_id, exp_user_divid, exp_url_id), 5000);
+                    setTimeout(function() { 
+                        deterdash.load_experiment_info(title_id, exp_user_divid, exp_url_id)
+                    }, 5000);
                 }
             ).catch(function(reason) {
                 console.log("error setting dashboad title: " + reason);
