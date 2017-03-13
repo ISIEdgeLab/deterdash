@@ -24,9 +24,6 @@
         <link href="{{ url_for('static', filename='css/select2.min.css') }}" rel="stylesheet" /> 
 
         <script src="{{ url_for('static', filename='js/deterdash.js') }}"></script>
-        <script>
-            deterdash.load_experiment_info(".experiment_id", ".experiment_swapper", ".experiment_URL")
-        </script>
         
     </head>
     <body class="skin-black">
@@ -230,9 +227,7 @@
                                     <ul class="treeview-menu">
                                         {% for a in exe_agents %}
                                             <li>
-                                                <a href="../../viz/exe_agent/{{ a.name }}">
-                                                    {{ a.display }}
-                                                </a>
+                                                <a id="exe_agent_{{a.name}}" href="#">{{a.name}}</a>
                                             </li>
                                         {% endfor %}
                                     </ul>
@@ -287,9 +282,8 @@
         <script src="{{ url_for('static', filename='AdminLTE/js/AdminLTE/app.js') }}" type="text/javascript"></script>
 
         <script>
-            // Initialize teh select2 box library.
-            $('.select').select2();
-            $('.select2').select2();
+            // Load various bits and bobs about teh experiment. 
+            deterdash.load_experiment_info(".experiment_id", ".experiment_swapper", ".experiment_URL")
 
             // Load the central page on click.
             jQuery(window).load(function() {
@@ -318,8 +312,20 @@
                         });
                     {% endfor %}
                 {% endif %}
+                {% if exe_agents|length > 0 %}
+                    {% for a in exe_agents %}
+                        jQuery("#exe_agent_{{a.name}}").on('click', function() { 
+                            jQuery.get("../../viz/exe_agent/{{ a.name }}", function(d) {
+                                jQuery("#content_id").html(d);
+                            })
+                        })
+                    {% endfor %}
+                {% endif %}
             });
             
+            // Initialize teh select2 box library.
+            $('.select').select2();
+            $('.select2').select2();
         </script>
     </body>
 </html>

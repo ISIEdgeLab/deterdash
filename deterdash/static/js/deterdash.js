@@ -22,40 +22,6 @@ console.log('deterdash loaded.');
             exp_proj = null,
             exp_url = null
 
-        var exp_info_promise = new Promise(
-            function(resolve, reject) {
-                d3.json(window.location.origin + "/api/exp_info",
-                    function(error, json) {
-                        if(error) {
-                            reject("error getting experiment info from server");
-                            return;
-                        }
-                        if(json.status !== 0) {
-                            reject("server unable to get exp info.");
-                            return;
-                        }
-                        resolve(json);
-                    }
-                );
-            });
-
-            exp_info_promise.then(
-                function(exp_info_json) {
-                    console.log("got exp info: ", exp_info_json)
-                    exp_name = exp_info_json['experiment']
-                    exp_url = "http://www.isi.deterlab.net/showexp.php?pid=" + exp_info_json['project'] +
-                                  "&eid=" + exp_info_json['experiment']
-                    exp_proj = exp_info_json['project']
-
-                    generate_page();
-                },
-                function(error) {
-                    console.log("error getting exp info: " + error);
-                }
-            ).catch(function(reason) {
-                console.log("error: " + reason);
-            });
-
             function generate_page() { 
                 console.log("generating exp status page")
                 // vars are filled out now.
@@ -95,11 +61,9 @@ console.log('deterdash loaded.');
                     function(error, json) {
                         if(error) {
                             reject("error getting experiment info from server");
-                            return;
                         }
                         if(json.status !== 0) {
                             reject("server unable to get exp info.");
-                            return;
                         }
                         resolve(json);
                     }
@@ -135,12 +99,11 @@ console.log('deterdash loaded.');
                         .append("i")
                             .classed("fa fa-flask", true)
                         .text(" " + exp_name + " on DETER")
-
-                        
-
                 },
                 function(error) {
-                    console.log("error getting exp info: " + error);
+                    console.log(error)
+                    console.log("retryingin 5 seconds...")
+                    setTimeout(load_experiment_info(title_id, exp_user_divid, exp_url_id), 5000);
                 }
             ).catch(function(reason) {
                 console.log("error setting dashboad title: " + reason);
