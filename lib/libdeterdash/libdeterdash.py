@@ -11,11 +11,18 @@ import time
 import pymongo
 import os.path
 import yaml
+from enum import Enum
 
 from magi.util import database
 from magi.testbed import testbed
 
 log = logging.getLogger(__name__)
+
+class DashboardNotificationLevel(Enum):
+    DEBUG = 1
+    INFO = 2
+    WARNING = 3
+    CRITICAL = 4
 
 class DeterDashboard(object):
 
@@ -31,18 +38,40 @@ class DeterDashboard(object):
     viz_idl_table = 'viz_data_idl'
 
     # Where we keep alerts.
-    viz_alerts_table = 'viz_alerts'
+    viz_notifications_table = 'viz_notifications'
 
     def __init__(self):
         pass
 
-    def send_alert(self, frm, text):
+    def send_notification(self, frm, text, level):
+        ''' send a notification from "frm" with message "text" at level "level". Level is 
+        a DashboardNotificationLevel, described above.'''
+        self._insert_notification(frm, text, level)
+
+    def debug_notification(self, frm, text):
+        self._insert_notification(frm, text, DashboardNotificationLevel.DEBUG)
+
+    def info_notification(self, frm, text):
+        self._insert_notification(frm, text, DashboardNotificationLevel.INFO)
+
+    def warning_notification(self, frm, text):
+        self._insert_notification(frm, text, DashboardNotificationLevel.WARNING)
+
+    def critical_notification(self, frm, text):
+        self._insert_notification(frm, text, DashboardNotificationLevel.CRITICAL)
+
+    def _insert_notification(self, frm, text, level):
         # We just write the text to teh DB, The server picks it up and sends it out.
-        # The client keeps track of alerts it's seen.
-        table = database.getCollection(DeterDashboard.viz_alerts_table)
+        # The client keeps track of notifications it's seen.
+        if not isinstance(level, DashboardNotificationLevel):
+            # Dont' really know what to do here other than make this notification very visible.
+            level = DeterDashboard.CRITICAL
+
+        table = database.getCollection(DeterDashboard.viz_notifications_table)
         table.insert({
-            'alerter': frm,
-            'text': text
+            'notitifer': frm,
+            'text': text,
+            'level': level.value
         })
 
     def add_time_plot(self, display, table, node_key, units):

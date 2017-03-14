@@ -9,6 +9,9 @@ console.log('deterdash loaded.');
     var deterdash = window.deterdash || {};
     window.deterdash = deterdash;    // GTL this seems wrong.
 
+    deterdash.handle_notifications = function(not_divid) {
+    }
+
     deterdash.set_title = function(divid, icon, titlestr, subtitle) {
         $(divid).empty()
         var titlediv = d3.select(divid).append("h1")
