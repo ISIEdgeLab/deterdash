@@ -1498,7 +1498,8 @@ console.log('deterdash loaded.');
             console.log("updating topology");
 
             // var link = link_selection.selectAll("path").data(links)
-            var link = link_selection.selectAll(".link").data(links).enter().append('g').attr('class', 'link')
+            var links_sel = link_selection.selectAll(".link").data(links)
+            var link = links_sel.enter().append('g').attr('class', 'link')
             var node = node_selection.selectAll(".node").data(nodes).enter().append("g").attr("class", "node")
 
             // update link attrs for existing links.
@@ -1534,7 +1535,7 @@ console.log('deterdash loaded.');
                 .on("mouseout", function(d) { exit_highlight(d); })
 
             // remove links no longer in the DOM.
-            link.exit().remove(); 
+            links_sel.exit().remove(); 
             node.exit().remove();
 
             simulation.nodes(nodes);
