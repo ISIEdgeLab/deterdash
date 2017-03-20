@@ -106,7 +106,7 @@ else
 fi
 
 # Install dependencies of deterdash (stolen from deterdash run.sh script).
-for p in python-flask python-pymongo; do
+for p in python-flask python-pymongo python-enum; do
     if [ $(dpkg-query -W -f='${Status}' ${p} 2>/dev/null | grep -c "ok installed") -eq 0 ]; then
         if ! apt-get install -y ${p} > /dev/null 2>&1; then 
             echo Error installing ${p}.
