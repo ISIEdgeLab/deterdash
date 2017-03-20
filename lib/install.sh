@@ -8,6 +8,7 @@ if [[ $(hostname -s) == users ]]; then
     if [[ $? -ne 0 ]]; then
         echo Error stating tarfile.
     fi
+    cp libdeterdash.install ${STAGINGDIR}/ &> /dev/null
 else
     echo Installing libdeterlab on $(hostname -s)
     sudo ${STAGINGDIR}/libdeterdash.install /tmp ${STAGINGDIR}
