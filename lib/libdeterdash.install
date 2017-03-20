@@ -4,7 +4,7 @@ tmpdir=$1
 srcdir=$2
 lib=libdeterdash
 
-sudo apt-get -y install python-flask python-pymongo python-enum
+sudo apt-get -y install python-flask python-pymongo python-enum34
 
 rm -rf ${tmpdir}/${lib}
 tar zxvf ${srcdir}/${lib}.tgz -C ${tmpdir}
