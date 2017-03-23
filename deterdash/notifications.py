@@ -5,23 +5,25 @@ from db import magi_db
 
 log = logging.getLogger(__name__)
 
-def get_alerts(timestamp):
-    log.debug('Getting alerts from {}'.format(timestamp))
+def get_notifications(timestamp):
+    log.debug('Getting notifcations from {}'.format(timestamp))
     db = magi_db()
     cursor = db.experiment_data.find({
-        'agent': DeterDashboard.viz_alerts_table,
+        'agent': DeterDashboard.viz_notifications_table,
         'created': {'$gte': float(timestamp)}
     }, {
         '_id': False,
-        'alerter': True,
+        'notifer': True,
         'text': True,
-        'host': True
+        'host': True,
+        'level': True,
+        'created': True
     }).sort('created', ASCENDING)
 
     if cursor.alive:
-        alerts = list(cursor)
-        log.debug('Found {} alerts'.format(len(alerts)))
-        return alerts
+        notifications = list(cursor)
+        log.debug('Found {} notifcations'.format(len(notifications)))
+        return notifications
     
-    log.debug('Found 0 alerts')
+    log.debug('Found 0 notifications')
     return None

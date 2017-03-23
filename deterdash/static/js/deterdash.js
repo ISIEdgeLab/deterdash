@@ -9,8 +9,88 @@ console.log('deterdash loaded.');
     var deterdash = window.deterdash || {};
     window.deterdash = deterdash;    // GTL this seems wrong.
 
-    deterdash.handle_notifications = function(not_divid) {
+    deterdash.do_notifications_loop = function(list_divid, viewall_divid, header_divid, timestamp, notifications) {
+        // access to closure vars "timestamp" and "notifications" within this function.
+        var notification_promise = new Promise(
+            function(resolve, reject) {
+                d3.json(window.location.origin + "/api/notifications/" + timestamp,
+                    function(error, json) {
+                        if(error) {
+                            reject("error getting notifications from server");
+                        }
+                        if(json.status !== 0) {
+                            reject("server unable to get notifications.");
+                        }
+                        if (json.notifications) { 
+                            resolve(json.notifications);
+                        } else {
+                            console.log('No new notifications from server.')
+                        }
+                    }
+                );
+            }
+        )
+
+        notification_promise.then(
+            function(nots) {
+                console.log('Got notifications: ', nots)
+                notifications = notifications.concat(nots)
+                notifications.sort(function(a, b) { return b.created - a.created; });
+                timestamp = Math.floor(notifications[0].created) + 1; // 1 sec granularity for notifications
+                var sel = d3.select(list_divid)
+                            .selectAll('li')
+                            .data(notifications, function(d) { return d.created }) 
+                            .enter()
+                                .append('li')
+                                .on('click', function(d) { console.log('clicked: ', d) })
+                                .append('a')
+                                .attr("href", "#")
+
+                // icon based on level.
+                sel.append('div').attr('class', 'pull-left')
+                    .append('i')
+                    .attr('class', function(d) { 
+                        switch(d.level.toLowerCase()) {
+                            case "debug": return 'fa fa-bug text-black';
+                            case "warning": return 'fa fa-warning text-yellow';
+                            case "critical": return 'fa fa-fire text-red';
+                            case "info":
+                            default: 
+                                return 'fa fa-info text-green';
+                        }
+                    })
+                // Text of message.
+                sel.append('h4').text(function(d) { return d.text; })
+
+                // "footer" 
+                var footer = sel.append('p')
+                    .text(function(d) { return d.notifer + " (" + d.host + ")"; })
+                    .append('small').classed('pull-right', true)
+                    .append('i').classed('fa fa-clock-o', true)
+                // create ISO time ans snip the appropriate substring
+                footer.append('text').text(function(d) { 
+                    return " " + new Date(d.created * 1e3).toISOString().slice(-13, -5);
+                })
+
+            },
+            function(error) {
+                console.log(error)
+            }
+        );
+
+        setTimeout(function() { 
+            console.log('Checking for notifications after ' + timestamp)
+            deterdash.do_notifications_loop(list_divid, viewall_divid, header_divid, timestamp, notifications)
+        }, 10000);
     }
+
+    deterdash.handle_notifications = function(list_divid, viewall_divid, header_divid) {
+        // ts is in the closure - call itself with updated ts every 10 seconds.
+        var timestamp = 0,
+            notifications = [];
+
+        deterdash.do_notifications_loop(list_divid, viewall_divid, header_divid, timestamp, notifications)
+    };
 
     deterdash.set_title = function(divid, icon, titlestr, subtitle) {
         $(divid).empty()
@@ -178,6 +258,7 @@ console.log('deterdash loaded.');
                 .enter()
                 .append("option")
                     .text(function(d) { return d })
+            $('.select2').select2();
         } else if (d.type == "boolean") { 
             var input = selection.append("select")
                 .classed("form-control", true)

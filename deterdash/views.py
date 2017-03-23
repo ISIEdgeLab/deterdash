@@ -11,7 +11,7 @@ from .viz_data import get_node_agents
 from .viz_data import get_viz_agent_nodes
 from .exp_info import get_exp_info, get_exp_nodes, get_node_info
 from .exe_agents import get_executable_agents, get_executable_agent
-from .alerts import get_alerts
+from .notifications import get_notifications
 
 from .time_plots import get_viz_time_plot_data
 
@@ -218,14 +218,16 @@ def node_agents(node):
 
     return jsonify(status=0, agents=agents)
 
-@app.route('/api/alerts/<timestamp>')
-def handle_alerts(timestamp):
-    # send all alerts timestamped after the unix timestamp given. TS is in seconds after jan 1 1970
-    alerts = get_alerts(timestamp)
-    if not alerts:
-        return jsonify(status=1)
+@app.route('/api/notifications/<timestamp>')
+def handle_notifications(timestamp):
+    # send all notifications timestamped after the unix timestamp given. TS is in seconds after jan 1 1970
+    notifications = get_notifications(timestamp)
+    if not notifications:
+        # How to distingish between failure and just lack of notifcations?
+        # return jsonify(status=1)
+        return jsonify(status=0, notifcations={})
 
-    return jsonify(status=0, alerts=alerts)
+    return jsonify(status=0, notifications=notifications)
 
 #
 # context processors. this probably should go elsewhere as they are not views.

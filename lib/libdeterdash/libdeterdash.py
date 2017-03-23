@@ -37,7 +37,7 @@ class DeterDashboard(object):
     # Where we keep IDLs
     viz_idl_table = 'viz_data_idl'
 
-    # Where we keep alerts.
+    # Where we keep notifications.
     viz_notifications_table = 'viz_notifications'
 
     def __init__(self):
@@ -69,9 +69,9 @@ class DeterDashboard(object):
 
         table = database.getCollection(DeterDashboard.viz_notifications_table)
         table.insert({
-            'notitifer': frm,
+            'notifer': frm,
             'text': text,
-            'level': level.value
+            'level': level.name
         })
 
     def add_time_plot(self, display, table, node_key, units):
