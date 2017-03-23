@@ -350,7 +350,7 @@ console.log('deterdash loaded.');
 
     // Wrap a table in a box/panel with the given title. 
     deterdash.build_table_panel = function(table_container, title, heading_map, table_data) {
-            var table_div = table_container.append("div").classed("box box-solid box-primary", true)
+            var table_div = table_container.append("div").classed("box box-primary", true)
 
             var header = table_div.append("div").classed("box-header", true)
 
@@ -364,7 +364,7 @@ console.log('deterdash loaded.');
     }
 
     deterdash.make_key_value_box = function(divid, the_title, kvmap, data) { 
-        var box = divid.append("div").classed("box box-solid box-primary", true)
+        var box = divid.append("div").classed("box box-primary", true)
         var header = box.append("div").classed("box-header", true)
         var body = box.append("div").classed("box-body", true)
 
@@ -431,7 +431,7 @@ console.log('deterdash loaded.');
     }
 
     deterdash.build_agent_exe_ui = function(agent, agent_div, nodes) {
-        var ae_container = agent_div.append("div").classed("box box-primary box-solid", true)
+        var ae_container = agent_div.append("div").classed("box box-primary ", true)
         var ae_header = ae_container
             .append("div").classed("box-header", true)
 
@@ -516,7 +516,7 @@ console.log('deterdash loaded.');
                 var logdiv = d3.select("#exe_agent_divid")
                 var box = logdiv.append("div").classed("row", true)
                                 .append("div").classed("col-lg-12", true)
-                                .append("div").classed("box box-solid box-primary", true)
+                                .append("div").classed("box box-primary", true)
                 var header = box.append("div").classed("box-header", true)
                 header.append("h3").classed("box-title", true).text("Orchestration Output")
                 header.append("div").classed("box-tools pull-right", true)
@@ -662,7 +662,7 @@ console.log('deterdash loaded.');
     }
 
     deterdash.make_text_box = function(divid, title_str, text) { 
-        var box = divid.append("div").classed("box box-solid box-primary", true)
+        var box = divid.append("div").classed("box box-primary", true)
 
         var header = box.append("div").classed("box-header", true)
         header.append("h3").classed("box-title", true).text(title_str)
