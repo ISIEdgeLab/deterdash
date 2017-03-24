@@ -71,7 +71,7 @@
                     <!-- notifications -->
                     <li class="dropdown messages-menu">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown">
-                            <!-- <span class="label label-warning">1</span> -->
+                            <span class="label label-warning" id='notifications_count'></span>
                             <i class="fa fa-warning"></i>
                             <span>Notifications<i class="caret"></i></span>
                         </a>
@@ -82,8 +82,8 @@
                                 </ul>
                             </li>
                             <li class="footer">
-                                <a href="#" id='viewall_notifications'>
-                                    View All
+                                <a href="#" id='clearall_notifications'>
+                                    Clear All
                                 </a>
                             </li>
                         </ul>
@@ -255,8 +255,8 @@
         deterdash.load_experiment_info(".experiment_id", ".experiment_swapper", ".experiment_URL")
 
         // check for notifications.
-        deterdash.handle_notifications('#deterdash_notifications', '#viewall_notifications',
-            '#notifications_header')
+        deterdash.handle_notifications('#deterdash_notifications', '#clearall_notifications',
+            '#notifications_header', '#notifications_count')
 
         // hardcoded clicks.
         jQuery("#exp_stat_page").on('click', function() {

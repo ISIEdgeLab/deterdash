@@ -9,7 +9,7 @@ console.log('deterdash loaded.');
     var deterdash = window.deterdash || {};
     window.deterdash = deterdash;    // GTL this seems wrong.
 
-    deterdash.do_notifications_loop = function(list_divid, viewall_divid, header_divid, timestamp, notifications) {
+    deterdash.do_notifications_loop = function(list_divid, clearall_id, header_divid, count_id, timestamp) {
         // access to closure vars "timestamp" and "notifications" within this function.
         var notification_promise = new Promise(
             function(resolve, reject) {
@@ -34,62 +34,85 @@ console.log('deterdash loaded.');
         notification_promise.then(
             function(nots) {
                 console.log('Got notifications: ', nots)
-                notifications = notifications.concat(nots)
-                notifications.sort(function(a, b) { return b.created - a.created; });
-                timestamp = Math.floor(notifications[0].created) + 1; // 1 sec granularity for notifications
-                var sel = d3.select(list_divid)
-                            .selectAll('li')
-                            .data(notifications, function(d) { return d.created }) 
-                            .enter()
-                                .append('li')
-                                .on('click', function(d) { console.log('clicked: ', d) })
-                                .append('a')
-                                .attr("href", "#")
-
-                // icon based on level.
-                sel.append('div').attr('class', 'pull-left')
-                    .append('i')
-                    .attr('class', function(d) { 
-                        switch(d.level.toLowerCase()) {
-                            case "debug": return 'fa fa-bug text-black';
-                            case "warning": return 'fa fa-warning text-yellow';
-                            case "critical": return 'fa fa-fire text-red';
-                            case "info":
-                            default: 
-                                return 'fa fa-info text-green';
-                        }
-                    })
-                // Text of message.
-                sel.append('h4').text(function(d) { return d.text; })
-
-                // "footer" 
-                var footer = sel.append('p')
-                    .text(function(d) { return d.notifer + " (" + d.host + ")"; })
-                    .append('small').classed('pull-right', true)
-                    .append('i').classed('fa fa-clock-o', true)
-                // create ISO time ans snip the appropriate substring
-                footer.append('text').text(function(d) { 
-                    return " " + new Date(d.created * 1e3).toISOString().slice(-13, -5);
-                })
-
+                deterdash.notifications = deterdash.notifications.concat(nots)
+                deterdash.notifications.sort(function(a, b) { return b.created - a.created; });
+                timestamp = Math.floor(deterdash.notifications[0].created) + 1; // 1 sec granularity for notifications
+                update();
             },
             function(error) {
                 console.log(error)
             }
         );
 
+        // now update list based on current data.
+        function update() {
+            var sel = d3.select(list_divid)
+                        .selectAll('li')
+                        .data(deterdash.notifications, function(d) { return d.created }) 
+
+            var enter_sel = sel.enter()
+                            .append('li')
+                            .on('click', function(d) { 
+                                // remove this entry.
+                                console.log('clicked: ', d)
+                                deterdash.notifications = deterdash.notifications.filter(
+                                    function(e) { return e.created != d.created; })
+                                update();
+                            })
+                            .append('a')
+                            .attr("href", "#")
+
+            // icon based on level.
+            enter_sel.append('div').attr('class', 'pull-left')
+                .append('i')
+                .attr('class', function(d) { 
+                    switch(d.level.toLowerCase()) {
+                        case "debug": return 'fa fa-bug text-black';
+                        case "warning": return 'fa fa-warning text-yellow';
+                        case "critical": return 'fa fa-fire text-red';
+                        case "info":
+                        default: 
+                            return 'fa fa-info text-green';
+                    }
+                })
+            // Text of message.
+            enter_sel.append('h4').text(function(d) { return d.text; })
+
+            // "footer" 
+            var footer = enter_sel.append('p')
+                .text(function(d) { return d.notifer + " (" + d.host + ")"; })
+                .append('small').classed('pull-right', true)
+                .append('i').classed('fa fa-clock-o', true)
+            // create ISO time ans snip the appropriate substring
+            footer.append('text').text(function(d) { 
+                return " " + new Date(d.created * 1e3).toISOString().slice(-13, -5);
+            })
+
+            sel.exit().remove();
+
+            // update the count of notifications.
+            if (deterdash.notifications.length > 0) {
+                d3.select(count_id).classed('label label-warning', true).text(deterdash.notifications.length)
+                jQuery(clearall_id).prop('disabled', false).on('click', function() { 
+                    deterdash.notifications.splice(0, deterdash.notifications.length)
+                    update();
+                })
+            } else {
+                d3.select(count_id).classed('label label-warning', false).text('')
+                jQuery(clearall_id).prop('disabled', true);
+            }
+        }
+
         setTimeout(function() { 
             console.log('Checking for notifications after ' + timestamp)
-            deterdash.do_notifications_loop(list_divid, viewall_divid, header_divid, timestamp, notifications)
+            deterdash.do_notifications_loop(list_divid, clearall_id, header_divid, count_id, timestamp)
         }, 10000);
     }
 
-    deterdash.handle_notifications = function(list_divid, viewall_divid, header_divid) {
-        // ts is in the closure - call itself with updated ts every 10 seconds.
-        var timestamp = 0,
-            notifications = [];
-
-        deterdash.do_notifications_loop(list_divid, viewall_divid, header_divid, timestamp, notifications)
+    deterdash.notifications = [];  // "global" yeah I know it's bad.
+    deterdash.handle_notifications = function(list_divid, clearall_id, header_divid, count_id) {
+        var timestamp = 0;
+        deterdash.do_notifications_loop(list_divid, clearall_id, header_divid, count_id, timestamp)
     };
 
     deterdash.set_title = function(divid, icon, titlestr, subtitle) {
