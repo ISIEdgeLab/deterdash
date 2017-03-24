@@ -1012,7 +1012,7 @@ a:focus {
 .navbar-nav > .messages-menu > .dropdown-menu > li .menu > li > a,
 .navbar-nav > .tasks-menu > .dropdown-menu > li .menu > li > a {
   display: block;
-  white-space: nowrap;
+  white-space: normal;
   /* Prevent text from breaking */
   border-bottom: 1px solid #f4f4f4;
 }
