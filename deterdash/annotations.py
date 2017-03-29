@@ -55,8 +55,11 @@ def get_topology_annotations(agent, key):
     edges = db.experiment_data.find({ 'agent': agent, key: {'$exists': True}}).distinct('edge')
     data = []
     for edge in edges:
-        cursor = db.experiment_data.find({'agent': agent, key: {'$exists': True}}).sort(
-            'created', pymongo.DESCENDING).limit(1)
+        cursor = db.experiment_data.find({
+            'agent': agent,
+            key: {'$exists': True},
+            'edge': edge
+        }).sort('created', pymongo.DESCENDING).limit(1)
             
         if cursor.alive and cursor.count():
             data.append({'edge': edge, 'value': cursor[0][key]})
