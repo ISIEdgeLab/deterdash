@@ -67,20 +67,27 @@ if ! hash git > /dev/null 2>&1; then
     fi
 fi
 
-# get us some space to work with. Very DETER specific.
-if grep /dev/sda4 /proc/mounts > /dev/null 2>&1; then
-    echo /dev/sda4 already mounted. Not remounting.
+# get us some space to work with. 
+dev_space=$(sudo fdisk -l | grep Empty | head -1 | awk '{print $1}')
+if [[ -z ${dev_space} ]]; then 
+    echo Unable to find empty partition, falling back to using /tmp.
+    mount_dir=/tmp
 else
-    echo Mounting /space.
-    mkfs.ext4 /dev/sda4 > /dev/null 2>&1
-    mkdir /space > /dev/null 2>&1
-    chmod 777 /space > /dev/null 2>&1
-    mount /dev/sda4 /space > /dev/null 2>&1
+    echo Found empty partition at ${dev_space}
+    if grep ${dev_space} /proc/mounts > /dev/null 2>&1; then
+        echo ${dev_space} mounted. Not remounting.
+    else
+        echo Mounting /space.
+        mkfs.ext4 ${dev_space} > /dev/null 2>&1
+        mkdir /space > /dev/null 2>&1
+        chmod 777 /space > /dev/null 2>&1
+        mount ${dev_space} /space > /dev/null 2>&1
 
+    fi
+
+    # just in case someone mounted it elsewhere. 
+    mount_dir=$(grep ${dev_space} /proc/mounts 2>/dev/null | awk '{print $2}')
 fi
-
-# just in case someone mounted it elsewhere. 
-mount_dir=$(grep /dev/sda4 /proc/mounts 2>/dev/null | awk '{print $2}')
 
 if [[ ! -e ${mount_dir} ]]; then 
     echo ${mount_dir} does not exist. Unable to continue.
