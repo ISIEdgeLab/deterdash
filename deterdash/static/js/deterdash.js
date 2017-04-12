@@ -1114,6 +1114,18 @@ console.log('deterdash loaded.');
                 .attr("height", legend_rect_size)
                 .style("fill", function(d) { return d.color; })
                 .style("stroke", function(d) { return d.color; })
+                .on("mouseover", function(d) { 
+                    var name = d.name;
+                    d3.selectAll('path').attr('opacity', function() { 
+                        var pname = this.getAttribute('name');
+                        if (!pname) return '1.0';
+                        if (name !== pname) return '0.13';
+                        return '1';
+                    })
+                })
+                .on("mouseout", function(d) { 
+                    d3.selectAll('path').attr('opacity', function(d) { return '1'; })
+                })
 
             leg_enter
                 .append("text")
@@ -1174,11 +1186,12 @@ console.log('deterdash loaded.');
                                 var node = {
                                     name: data[data_i].node,
                                     data: [],
-                                    color:path_color(next_color)
+                                    color:path_color(next_color),
                                 }; 
                                 node.path = paths.append("path")
                                         .attr("stroke", path_color(next_color))
-                                        .attr("fill", "none");
+                                        .attr("fill", "none")
+                                        .attr("name", node.name)  // so we can find the node from the path.
 
                                 nodes.push(node);
                                 next_color += next_color+1 % path_color.range().length
@@ -1237,9 +1250,9 @@ console.log('deterdash loaded.');
                 yaxis.call(d3.axisLeft(y_scale).tickFormat(d3.format(',.2s')))
 
                 xaxis.transition()
-                .duration(duration)
-                .ease(d3.easeLinear)
-                .call(d3.axisBottom(x_scale).tickFormat(d3.timeFormat("%H:%M:%S")))
+                    .duration(duration)
+                    .ease(d3.easeLinear)
+                    .call(d3.axisBottom(x_scale).tickFormat(d3.timeFormat("%H:%M:%S")))
 
                 paths.attr('transform', null)
                     .transition()
