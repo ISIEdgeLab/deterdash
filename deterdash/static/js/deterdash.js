@@ -9,6 +9,45 @@ console.log('deterdash loaded.');
     var deterdash = window.deterdash || {};
     window.deterdash = deterdash;    // GTL this seems wrong.
 
+    deterdash.do_scenario = function(divid, scenario, nodes) {
+        console.log('Running scenario: ', scenario);
+
+        var s = jsyaml.safeLoad(scenario.scenario);
+        var s_body = d3.select(divid).append("div").classed("box-body", true)
+       
+        var groups_div = s_body.append('div').classed('box box-primary', true)
+        var groups_header = groups_div.append('div').classed('box-header', true)
+                                      .append('h3').classed('box-title', true).text('Groups')
+        var groups_body = groups_div.append('div').classed('box-body', true)
+        if (s.groups) { 
+            var groups_input = []
+            for (var k in s.groups) {
+                groups_input.push({help: '', name: k, type: 'nodelist', default: s.groups[k], nodes: nodes})
+            }
+            deterdash.build_keyvalue_input_table(groups_body, 'Groups', 'group_key', groups_input);
+        }
+
+        if (s.agents) {
+            for (var k in s.agents) {
+                var agents_div = s_body.append('div').classed('box box-primary', true)
+                var agents_header = groups_div.append('div').classed('box-header', true)
+                                              .append('h3').classed('box-title', true).text('Agents')
+                var agents_body = groups_div.append('div').classed('box-body', true)
+
+                var agents_input = []
+                agents_input.push({name: 'group', help: '', type: "string", default: k})
+                for (var ea in s.agents[k].execargs) {
+                    agents_input.push({name: ea, help: '', type: "string", default: s.agents[k].execargs[ea]})
+                }
+                deterdash.build_keyvalue_input_table(agents_body, 'Agents', 'agents_key', agents_input);
+            }
+        }
+        // var timeline = s_body.append("div").classed("col-md-12", true).append("ul").classed("timeline", true)
+        // timeline.append("li").classed("time-label", true)
+        //     .append("span").classed("bg-green", true).text("Stream Start")
+
+    }
+
     deterdash.do_notifications_loop = function(list_divid, clearall_id, header_divid, count_id, timestamp) {
         // access to closure vars "timestamp" and "notifications" within this function.
         var notification_promise = new Promise(
@@ -265,7 +304,7 @@ console.log('deterdash loaded.');
             })
     }
 
-    deterdash.build_keyvalue_input_entry = function(selection, key_attr, d, key, nodes) { 
+    deterdash.build_keyvalue_input_entry = function(selection, key_attr, d, key) { 
         if (d.type === "nodelist") {
             var input = selection.append("td").append("select")
                 .classed("form-control select2", true)
@@ -277,11 +316,12 @@ console.log('deterdash loaded.');
                 .attr('tags', 'true')
                 .attr('key', key)
             input.selectAll("option")
-                .data(nodes)
+                .data(d.nodes)
                 .enter()
                 .append("option")
                     .text(function(d) { return d })
-            $('.select2').select2();
+            // make the select into a select2 and set the defaults.
+            $(input.node()).select2().val(d.default).trigger('change');
         } else if (d.type == "boolean") { 
             var input = selection.append("select")
                 .classed("form-control", true)
@@ -315,7 +355,7 @@ console.log('deterdash loaded.');
         }
     }
 
-    deterdash.build_keyvalue_input_table = function(divsel, data_name, key_attr, data, nodes) {
+    deterdash.build_keyvalue_input_table = function(divsel, data_name, key_attr, data) {
         var table = divsel.append("div").classed("table-responsive ", true)
                     .append("table").classed("table aal_stream_data", true)
                     .attr("aal_data_name", data_name)
@@ -330,18 +370,12 @@ console.log('deterdash loaded.');
             .text(function(d) { return d; })
 
         var tbody = table.append("tbody")
-        if (nodes.length) {
-            var onnodes = tbody.append("tr")
-            onnodes.append("td").text("Run on nodes")
-            deterdash.build_keyvalue_input_entry(onnodes, key_attr, {type: "nodelist"}, 'run_on_nodes', nodes)
-        }
-
         if (data && data.length) {
             data.forEach(function(d) { 
                 var row = tbody.append("tr")
                 row.append("td").text(d['name'])
                 var input = row.append("td")
-                deterdash.build_keyvalue_input_entry(input, key_attr, d, d['name'], nodes)
+                deterdash.build_keyvalue_input_entry(input, key_attr, d, d['name'])
             })
         }
         else { 
@@ -513,7 +547,17 @@ console.log('deterdash loaded.');
             .append("h3").classed("timeline-header", true)
             .text("Initialize Agent")
         var init_agent_body = init_agent_item.append("div").classed("timeline-body", true)
-        deterdash.build_keyvalue_input_table(init_agent_body, "agent_init", "value_key", agent.variables, nodes)
+        // preprend "run on nodes" entry.
+        var runonnodes = {help: '', name: 'run_on_nodes', type: 'nodelist'}
+        if (agent.variables) agent.variables.unshift(runonnodes)
+        else agent.variables = [runonnodes];
+        // add default node list nodes to all nodelist types.
+        for (var i=0; i<agent.variables.length; i++) {
+            if (agent.variables[i].type === 'nodelist') {
+                agent.variables[i].nodes = nodes;
+            }
+        }
+        deterdash.build_keyvalue_input_table(init_agent_body, "agent_init", "value_key", agent.variables)
 
         function push_stream(timeline) {
             var aal_input = []
@@ -570,8 +614,7 @@ console.log('deterdash loaded.');
                     agent_method.remove()
                 })
             var agent_method_body = agent_method_item.append("div").classed("timeline-body", true)
-            deterdash.build_keyvalue_input_table(agent_method_body, d.name, 
-                "value_key", d.args, [])
+            deterdash.build_keyvalue_input_table(agent_method_body, d.name, "value_key", d.args)
 
         }
 
@@ -587,8 +630,7 @@ console.log('deterdash loaded.');
                 })
             var pause_body = pause_item.append("div").classed("timeline-body", true)
             var pause_args = [{name: "Interval", type: "integer"}]
-            deterdash.build_keyvalue_input_table(pause_body, "stream_pause", 
-                "value_key", pause_args, [])
+            deterdash.build_keyvalue_input_table(pause_body, "stream_pause", "value_key", pause_args)
         }
     }
 
@@ -1114,18 +1156,6 @@ console.log('deterdash loaded.');
                 .attr("height", legend_rect_size)
                 .style("fill", function(d) { return d.color; })
                 .style("stroke", function(d) { return d.color; })
-                .on("mouseover", function(d) { 
-                    var name = d.name;
-                    d3.selectAll('path').attr('opacity', function() { 
-                        var pname = this.getAttribute('name');
-                        if (!pname) return '1.0';
-                        if (name !== pname) return '0.13';
-                        return '1';
-                    })
-                })
-                .on("mouseout", function(d) { 
-                    d3.selectAll('path').attr('opacity', function(d) { return '1'; })
-                })
 
             leg_enter
                 .append("text")
@@ -1186,12 +1216,11 @@ console.log('deterdash loaded.');
                                 var node = {
                                     name: data[data_i].node,
                                     data: [],
-                                    color:path_color(next_color),
+                                    color:path_color(next_color)
                                 }; 
                                 node.path = paths.append("path")
                                         .attr("stroke", path_color(next_color))
-                                        .attr("fill", "none")
-                                        .attr("name", node.name)  // so we can find the node from the path.
+                                        .attr("fill", "none");
 
                                 nodes.push(node);
                                 next_color += next_color+1 % path_color.range().length
@@ -1250,9 +1279,9 @@ console.log('deterdash loaded.');
                 yaxis.call(d3.axisLeft(y_scale).tickFormat(d3.format(',.2s')))
 
                 xaxis.transition()
-                    .duration(duration)
-                    .ease(d3.easeLinear)
-                    .call(d3.axisBottom(x_scale).tickFormat(d3.timeFormat("%H:%M:%S")))
+                .duration(duration)
+                .ease(d3.easeLinear)
+                .call(d3.axisBottom(x_scale).tickFormat(d3.timeFormat("%H:%M:%S")))
 
                 paths.attr('transform', null)
                     .transition()
@@ -1419,7 +1448,7 @@ console.log('deterdash loaded.');
             }
         ).then(
             function(expinfo) {
-                $(title_divid).html("Experiment: <b>" + expinfo.project + " / "
+                $(panel_title_divid).html("Experiment: <b>" + expinfo.project + " / "
                     + expinfo.experiment + "</b>"); 
             }, 
             function(message, error) {
@@ -1582,26 +1611,38 @@ console.log('deterdash loaded.');
         
             path_show_promise.then(
                 function(json) {
-                    var path_nodes = json["path"]
-                    var route_name = path_nodes[0] + "-" + path_nodes[path_nodes.length-1]
-                    for(var i = 0; i < path_nodes.length-1; i++) {
-                        var s = path_nodes[i]
-                        var t = path_nodes[i+1]
-                        var si = simulation.nodes().findIndex(function(n) { return n.name == s; });
-                        var ti = simulation.nodes().findIndex(function(n) { return n.name == t; });
-                        var name = s + "-" + t
-                        console.log('adding route path link', si, ti, name, route_name);
-                        links.push({source: si, target: ti, name: name,
-                            linknum: path_slot, route: route_name, label: null});
+                    if (json['complete'] === false) {
+                        // alert('Error finding route between ' +  selected_path_nodes[path_slot].src.name
+                        //      + ' and ' + selected_path_nodes[path_slot].dst.name);
+                        var a = d3.select("#message_area").append('div')
+                            .classed('alert alert-danger alert-dismissable', true)
+                        a.append('a').classed('close', true).attr('data-dismiss', 'alert')
+                            .attr('href', '#').attr('aria-label', 'close').text('x');
+                        a.append('text').text(
+                                'Error finding route between ' +  selected_path_nodes[path_slot].src.name
+                               + ' and ' + selected_path_nodes[path_slot].dst.name);
+                    } else {
+                        var path_nodes = json["path"]
+                        var route_name = path_nodes[0] + "-" + path_nodes[path_nodes.length-1]
+                        for(var i = 0; i < path_nodes.length-1; i++) {
+                            var s = path_nodes[i]
+                            var t = path_nodes[i+1]
+                            var si = simulation.nodes().findIndex(function(n) { return n.name == s; });
+                            var ti = simulation.nodes().findIndex(function(n) { return n.name == t; });
+                            var name = s + "-" + t
+                            console.log('adding route path link', si, ti, name, route_name);
+                            links.push({source: si, target: ti, name: name,
+                                linknum: path_slot, route: route_name, label: null});
+                        }
+                        var src = path_nodes[0],
+                            dst = path_nodes[path_nodes.length-1];
+                        route_dropdown_menu.push({
+                            id: src + dst + path_slot,
+                            text: src + " --> " + dst,
+                            src: src, dst: dst, slot: path_slot,
+                            color: route_color(path_slot)
+                        });
                     }
-                    var src = path_nodes[0],
-                        dst = path_nodes[path_nodes.length-1];
-                    route_dropdown_menu.push({
-                        id: src + dst + path_slot,
-                        text: src + " --> " + dst,
-                        src: src, dst: dst, slot: path_slot,
-                        color: route_color(path_slot)
-                    });
                     d3.select('#' + disp_route_button_id).classed("disabled", false); 
                     d3.select(".choose-nodes-message").remove()
                     choosing_path = false;
